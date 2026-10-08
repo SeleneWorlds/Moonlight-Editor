@@ -7,6 +7,7 @@ local Editor = {}
 local coordinateLookups = {}
 local nextInlineId = 0
 local gizmoProviders = {}
+local goToProviders = {}
 local registryVisualResolvers = {}
 local MAX_FILE_BYTES = 60 * 1024
 local RUNTIME_DATA_KEY = "moonlight-editor:state"
@@ -35,6 +36,17 @@ local function editorState(enabled)
     return { enabled = enabled, visualRegistries = visualRegistries }
 end
 
+local function focusCamera(player, coordinate)
+    player:getRuntimeData(RUNTIME_DATA_KEY).coordinate = coordinate
+    local controlled = player:getControlledEntity()
+    if controlled then
+        player:setCameraToFollowControlledEntity()
+        player:setCameraToCoordinate(coordinate, controlled:getDimension())
+    else
+        player:setCameraToCoordinate(coordinate)
+    end
+end
+
 local function setEnabled(player, enabled)
     player:removeRuntimeData(INLINE_SESSION_KEY)
     local state = player:getRuntimeData(RUNTIME_DATA_KEY)
@@ -47,7 +59,7 @@ local function setEnabled(player, enabled)
             end
         end
         if state.coordinate then
-            player:setCameraToCoordinate(state.coordinate)
+            focusCamera(player, state.coordinate)
         end
     else
         player:setCameraToFollowControlledEntity()
@@ -80,6 +92,53 @@ function Editor.registerGizmoProvider(provider)
     assert(type(provider) == "function", "Gizmo provider must be a function.")
     table.insert(gizmoProviders, provider)
 end
+
+---Register a provider returning { name, coordinate = { x, y, z }, visual?, type } targets.
+---Providers receive the requesting player and are refreshed whenever the menu opens.
+function Editor.registerGoToProvider(provider)
+    assert(type(provider) == "function", "GoTo provider must be a function.")
+    table.insert(goToProviders, provider)
+end
+
+Network.handlePayload("moonlight-editor:request-go-to-targets", function(player)
+    if not Editor.isEnabled(player) then return end
+    local targets = {}
+    for _, provider in ipairs(goToProviders) do
+        local ok, provided = pcall(provider, player)
+        if not ok then
+            sendError(player, provided)
+        elseif type(provided) == "table" then
+            for _, target in ipairs(provided) do
+                local coordinate = target.coordinate
+                local valid = type(coordinate) == "table"
+                for _, axis in ipairs({ "x", "y", "z" }) do
+                    local value = valid and coordinate[axis]
+                    if type(value) ~= "number" or value % 1 ~= 0 or math.abs(value) > 2147483647 then
+                        valid = false
+                    end
+                end
+                if valid and type(target.name) == "string" and type(target.type) == "string" then
+                    table.insert(targets, {
+                        name = target.name, type = target.type,
+                        coordinate = { x = coordinate.x, y = coordinate.y, z = coordinate.z },
+                        visual = type(target.visual) == "string" and target.visual or nil,
+                    })
+                end
+            end
+        end
+    end
+    table.sort(targets, function(a, b)
+        if a.name == b.name then return a.type < b.type end
+        return a.name < b.name
+    end)
+    Network.sendToPlayer(player, "moonlight-editor:go-to-targets-start", {})
+    for first = 1, #targets, 100 do
+        local chunk = {}
+        for index = first, math.min(first + 99, #targets) do table.insert(chunk, targets[index]) end
+        Network.sendToPlayer(player, "moonlight-editor:go-to-targets", { targets = chunk })
+    end
+    Network.sendToPlayer(player, "moonlight-editor:go-to-targets-end", {})
+end)
 
 function Editor.registerRegistryVisualResolver(registryName, resolver)
     assert(type(registryName) == "string" and registryName ~= "", "Registry name must be a non-empty string.")
@@ -223,14 +282,21 @@ Network.handlePayload("moonlight-editor:move-camera", function(player, payload)
     player:setCameraToCoordinate(coordinate)
 end)
 
+Network.handlePayload("moonlight-editor:go-to", function(player, payload)
+    if not Editor.isEnabled(player) or type(payload) ~= "table" then return end
+    for _, axis in ipairs({ "x", "y", "z" }) do
+        local value = payload[axis]
+        if type(value) ~= "number" or value % 1 ~= 0 or math.abs(value) > 2147483647 then return end
+    end
+    focusCamera(player, position(payload.x, payload.y, payload.z))
+end)
+
 Network.handlePayload("moonlight-editor:focus-character", function(player)
     if not Editor.isEnabled(player) then return end
     local controlled = player:getControlledEntity()
     if not controlled then return end
     local coordinate = controlled:getCoordinate()
-    player:getRuntimeData(RUNTIME_DATA_KEY).coordinate = coordinate
-    player:setCameraToFollowControlledEntity()
-    player:setCameraToCoordinate(coordinate, controlled:getDimension())
+    focusCamera(player, coordinate)
 end)
 
 Network.handlePayload("moonlight-editor:request-state", function(player)

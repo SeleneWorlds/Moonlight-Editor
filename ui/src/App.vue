@@ -7,6 +7,7 @@ import { useSelene, editorHttpRequest, type ClientNetworkPayload, type Coordinat
 import FileModal from './FileModal.vue';
 import SchemaForm from './SchemaForm.vue';
 import GizmoVisual from './GizmoVisual.vue';
+import GoToMenu from './GoToMenu.vue';
 
 interface EditorGizmo {
   id: string;
@@ -1033,6 +1034,7 @@ onBeforeUnmount(() => {
       <Focus :size="16" aria-hidden="true" />
       Focus Character
     </button>
+    <GoToMenu />
     <button type="button" @click="setProjectVisible(true)">
         <Database :size="16" aria-hidden="true" />
         Registry Editor
