@@ -1,0 +1,11 @@
+{
+  "name": "moonlight-editor",
+  "description": "Web-based world editor and free camera for Selene",
+  "entrypoints": ["server/lua/init.lua"],
+  "ui": [
+    {
+      "id": "editor",
+      "entrypoint": "client/ui/dist/index.html"
+    }
+  ]
+}
