@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Focus, Database, ArrowDown, ArrowUp } from '@lucide/vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Focus, Database, ArrowDown, ArrowUp, Grid2X2 } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import { pickedDistance, projectedCircle } from './distance';
 import { useSelene, editorHttpRequest, type ClientNetworkPayload, type Coordinate } from './selene';
@@ -232,6 +232,10 @@ const moveCameraLevel = (direction: number, event: MouseEvent) => {
   });
 };
 const projectionRevision = ref(0);
+const showTileGrid = ref(false);
+watch([enabled, showTileGrid], ([active, visible]) => {
+  void selene.world.setTileGridVisible(active && visible);
+});
 const pickingDistance = ref<DistancePick | null>(null);
 const pickerActive = ref(false);
 const distanceCircle = computed(() => {
@@ -1015,6 +1019,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  void selene.world.setTileGridVisible(false);
   if (cameraZoom !== 1) {
     void selene.world.setCameraZoom(1);
     selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom: 1 });
@@ -1056,6 +1061,15 @@ onBeforeUnmount(() => {
       Focus Character
     </button>
     <GoToMenu />
+    <button
+      type="button"
+      title="Show tile grid on the current z layer"
+      :aria-pressed="showTileGrid"
+      @click="showTileGrid = !showTileGrid"
+    >
+      <Grid2X2 :size="16" aria-hidden="true" />
+      Toggle Grid
+    </button>
     <button type="button" @click="setProjectVisible(true)">
         <Database :size="16" aria-hidden="true" />
         Registry Editor
@@ -1272,6 +1286,10 @@ onBeforeUnmount(() => {
   inset: 0;
   overflow: hidden;
   pointer-events: none;
+}
+.actions button[aria-pressed='true'] {
+  background: #3f3f46;
+  border-color: #f29d49;
 }
 .distance-preview {
   position: fixed;
