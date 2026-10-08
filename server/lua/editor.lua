@@ -154,6 +154,10 @@ Network.handlePayload("moonlight-editor:lookup-coordinate", function(player, pay
     local coordinate = position(payload.x, payload.y, payload.z)
     for _, lookup in ipairs(coordinateLookups) do
         local ok, path = pcall(lookup, coordinate, payload.scope, player)
+        if not ok then
+            sendError(player, path)
+            return
+        end
         if ok and type(path) == "table" and payload.scope == nil then
             if type(path.schema) == "table" and type(path.values) == "table" and type(path.update) == "function" then
                 nextInlineId = nextInlineId + 1
