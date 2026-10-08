@@ -233,6 +233,22 @@ const moveCameraLevel = (direction: number, event: MouseEvent) => {
 };
 const projectionRevision = ref(0);
 const showTileGrid = ref(false);
+let tileGridCheckRevision = 0;
+function toggleTileGrid(): void {
+  tileGridCheckRevision += 1;
+  showTileGrid.value = !showTileGrid.value;
+}
+async function enableGridForEmptyLayer(coordinate: Coordinate): Promise<void> {
+  const revision = ++tileGridCheckRevision;
+  try {
+    const hasTile = await selene.world.hasTileAt({ ...coordinate });
+    if (enabled.value && revision === tileGridCheckRevision && !hasTile) {
+      showTileGrid.value = true;
+    }
+  } catch (error) {
+    console.warn('[Moonlight Editor] Could not check focus tile', error);
+  }
+}
 watch([enabled, showTileGrid], ([active, visible]) => {
   void selene.world.setTileGridVisible(active && visible);
 });
@@ -697,6 +713,7 @@ onMounted(() => {
       if (payload.enabled === true) {
         requestEditor('pending-changes');
       }
+      tileGridCheckRevision += 1;
       enabled.value = payload.enabled === true;
       if (enabled.value) {
         selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom: cameraZoom });
@@ -1000,7 +1017,12 @@ onMounted(() => {
       dragSequence += 1;
     }),
     selene.world.onCameraCoordinateChanged((coordinate) => {
+      const changedLayer = coordinate.z !== cameraCoordinate.value.z;
+      tileGridCheckRevision += 1;
       cameraCoordinate.value = coordinate;
+      if (enabled.value && changedLayer) {
+        void enableGridForEmptyLayer(coordinate);
+      }
       if (
         enabled.value &&
         (!lastGizmoCoordinate ||
@@ -1019,6 +1041,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  tileGridCheckRevision += 1;
   void selene.world.setTileGridVisible(false);
   if (cameraZoom !== 1) {
     void selene.world.setCameraZoom(1);
@@ -1065,7 +1088,7 @@ onBeforeUnmount(() => {
       type="button"
       title="Show tile grid on the current z layer"
       :aria-pressed="showTileGrid"
-      @click="showTileGrid = !showTileGrid"
+      @click="toggleTileGrid"
     >
       <Grid2X2 :size="16" aria-hidden="true" />
       Toggle Grid
