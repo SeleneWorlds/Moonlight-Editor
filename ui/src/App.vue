@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Focus, Database, ArrowDown, ArrowUp, Grid2X2 } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import { pickedDistance, projectedCircle } from './distance';
-import { useSelene, editorHttpRequest, type ClientNetworkPayload, type Coordinate } from './selene';
+import { useSelene, requestEditorOperation, type ClientNetworkPayload, type Coordinate } from './selene';
 import FileModal from './FileModal.vue';
 import SchemaForm from './SchemaForm.vue';
 import GizmoVisual from './GizmoVisual.vue';
@@ -39,9 +39,7 @@ function onEditorResponse(id: string, callback: (payload: Record<string, unknown
   };
 }
 function requestEditor(operation: string, payload: Record<string, unknown> = {}): void {
-  const request = editorHttpRequest(operation, payload);
-  void selene.http
-    .request(request.path, request.payload, request.method)
+  void requestEditorOperation(selene, operation, payload)
     .then((result) => {
       const data = result as Record<string, unknown>;
       const deliver = (id: string, payload = data): void => {

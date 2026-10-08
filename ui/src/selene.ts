@@ -19,6 +19,9 @@ export interface SeleneUiApi {
   readonly http: {
     request(path: string, payload?: ClientNetworkPayload, method?: 'GET' | 'POST' | 'PUT'): Promise<unknown>;
   };
+  readonly registries: {
+    search(registry: string, query: string, lookup?: boolean): Promise<Record<string, unknown> | null>;
+  };
   readonly resolveAsset: (path: string) => Promise<string>;
   readonly visuals: {
     getDefinition(identifier: string): Promise<VisualDefinition>;
@@ -98,6 +101,36 @@ export const createMockSeleneUiApi = (): SeleneUiApi => ({
         throw new Error(`HTTP operation failed: ${response.status}`);
       }
       return response.json();
+    },
+  },
+  registries: {
+    search: async (registry, query, lookup = false) => {
+      const response = await fetch(
+        `/client/registries/${encodeURIComponent(registry.includes(':') ? registry : `selene:${registry}`)}`,
+      );
+      if (response.status === 404) {return null;}
+      if (!response.ok) {throw new Error(`Registry lookup failed: ${response.status}`);}
+      const snapshot = (await response.json()) as { entries: Record<string, Record<string, unknown>> };
+      const options = Object.entries(snapshot.entries)
+        .flatMap(([value, fields]) => {
+          const metadata = (fields.metadata as Record<string, unknown> | undefined) ?? {};
+          const label = String(metadata.name ?? fields.name ?? value);
+          const matches = lookup
+            ? value.toLowerCase() === query.toLowerCase()
+            : label.toLowerCase().includes(query.toLowerCase()) || value.toLowerCase().includes(query.toLowerCase());
+          const visual =
+            typeof metadata.visual === 'string'
+              ? metadata.visual
+              : typeof fields.visual === 'string'
+                ? fields.visual
+                : registry === 'entities' || registry === 'selene:entities'
+                  ? value
+                  : null;
+          return matches ? [{ value, label, visual }] : [];
+        })
+        .sort((a, b) => (a.label < b.label ? -1 : a.label > b.label ? 1 : 0))
+        .slice(0, 50);
+      return { registry, query, lookup, options };
     },
   },
   resolveAsset: async (path) => `/${path.replace(/^client\/ui\/dist\//, '')}`,
@@ -213,4 +246,21 @@ export function editorHttpRequest(
       throw new Error(`Unknown editor operation: ${operation}`);
   }
   return { path, payload: body, method };
+}
+
+export async function requestEditorOperation(
+  selene: Pick<SeleneUiApi, 'registries' | 'http'>,
+  operation: string,
+  payload: ClientNetworkPayload = {},
+): Promise<unknown> {
+  if (operation === 'search-registry') {
+    const localResult = await selene.registries.search(
+      String(payload.registry),
+      String(payload.query ?? ''),
+      payload.lookup === true,
+    );
+    if (localResult !== null) {return localResult;}
+  }
+  const request = editorHttpRequest(operation, payload);
+  return selene.http.request(request.path, request.payload, request.method);
 }
