@@ -231,249 +231,259 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
 </script>
 
 <template>
-  <section class="project">
-    <aside class="browser">
-      <div class="browser-content">
-        <label class="bundle-picker">
-          <span>Bundle</span>
-          <select v-model="selectedBundle" :disabled="bundles.length === 0" @change="emit('selectBundle')">
-            <option v-for="bundle in bundles" :key="bundle" :value="bundle">{{ bundle }}</option>
-          </select>
-        </label>
-        <label class="bundle-picker">
-          <span>Registry</span>
-          <select v-model="selectedRegistry" :disabled="registries.length === 0" @change="emit('requestProject')">
-            <option v-for="registry in registries" :key="registry" :value="registry">{{ registry }}</option>
-          </select>
-        </label>
-        <div class="file-search">
+  <div class="file-modal">
+    <div class="peek-zone" aria-hidden="true" />
+    <section class="project">
+      <aside class="browser">
+        <div class="browser-content">
           <label class="bundle-picker">
-            <span>Search</span>
-            <input
-              v-model="fileSearch"
-              type="search"
-              placeholder="Search paths or names…"
-              :disabled="!selectedBundle || !selectedRegistry"
-              spellcheck="false"
-            />
+            <span>Bundle</span>
+            <select v-model="selectedBundle" :disabled="bundles.length === 0" @change="emit('selectBundle')">
+              <option v-for="bundle in bundles" :key="bundle" :value="bundle">{{ bundle }}</option>
+            </select>
           </label>
-          <button
-            class="close"
-            type="button"
-            :disabled="!selectedBundle || !selectedRegistry"
-            title="Pick a resource in this registry from the world"
-            aria-label="Pick a resource in this registry from the world"
-            @click="emit('pickResource')"
-          >
-            <Pipette :size="16" aria-hidden="true" />
-          </button>
-          <button
-            class="close"
-            type="button"
-            :disabled="!selectedBundle || !selectedRegistry || projectLoading || editorLoading"
-            title="Create a new registry entry"
-            aria-label="Create a new registry entry"
-            @click="openCreateDialog()"
-          >
-            <FilePlus :size="16" aria-hidden="true" />
-          </button>
-        </div>
-        <div v-if="projectLoading" class="loading" role="status" aria-label="Loading paths">
-          <span class="spinner" aria-hidden="true" />
-        </div>
-        <p v-else-if="filteredFiles.length === 0" class="files-empty" role="status">
-          {{ fileSearch.trim() ? 'No matching files.' : 'No files in this registry.' }}
-        </p>
-        <ul v-else class="files">
-          <li v-for="file in filteredFiles" :key="file.path">
-            <button
-              :class="{ active: file.path === selectedPath }"
-              :title="file.path"
-              @click="emit('openFile', file.path)"
-            >
-              <span class="file-heading">
-                <span class="file-name">{{ file.name ?? pathWithinRegistry(file.path) }}</span>
-                <span
-                  v-if="localPaths.includes(file.path)"
-                  class="change-dot local"
-                  title="Unapplied local changes"
-                  role="img"
-                  aria-label="Unapplied local changes"
-                />
-                <span
-                  v-if="pendingPaths.includes(file.path)"
-                  class="change-dot pending"
-                  title="Unpersisted changes"
-                  role="img"
-                  aria-label="Unpersisted changes"
-                />
-              </span>
-              <small>({{ pathWithinRegistry(file.path) }})</small>
-            </button>
-          </li>
-        </ul>
-      </div>
-      <footer class="browser-footer" aria-label="Batch resource actions">
-        <button
-          class="persist"
-          :disabled="pendingChanges === 0 || !permissions.persistAll"
-          @click="requestConfirmation('persist')"
-        >
-          Persist {{ pendingChanges }} changes
-        </button>
-        <button
-          class="discard"
-          :disabled="pendingChanges === 0 || !permissions.discardAll"
-          @click="requestConfirmation('discard')"
-        >
-          Rollback {{ pendingChanges }} changes
-        </button>
-      </footer>
-    </aside>
-    <main class="editor">
-      <header class="toolbar">
-        <button
-          v-if="selectedPath && enabledField"
-          class="enabled-switch"
-          type="button"
-          role="switch"
-          :aria-checked="parsedContents?.[enabledField] === true"
-          aria-label="Enabled"
-          :title="parsedContents?.[enabledField] === true ? 'Disable resource' : 'Enable resource'"
-          :disabled="editorLoading || !parsedContents || !permissions.apply"
-          @click="toggleEnabled"
-        >
-          <span />
-        </button>
-        <span class="path">
-          <template v-if="selectedPath">
-            <span>{{ selectedFile?.name ?? pathWithinRegistry(selectedPath) }}</span>
-            <small>({{ pathWithinRegistry(selectedPath) }})</small>
-          </template>
-          <template v-else>Select a file</template>
-        </span>
-        <button class="close" @click="emit('close')">Close</button>
-      </header>
-      <div v-if="editorLoading" class="loading" role="status" aria-label="Loading editor">
-        <span class="spinner" aria-hidden="true" />
-      </div>
-      <div v-else-if="selectedPath" class="document">
-        <div class="document-toolbar">
-          <nav class="tabs" aria-label="Editor view">
-            <button v-if="schema" :class="{ active: activeTab === 'form' }" type="button" @click="activeTab = 'form'">
-              Form
-            </button>
-            <button :class="{ active: activeTab === 'json' }" type="button" @click="activeTab = 'json'">
-              Raw JSON
-            </button>
-          </nav>
-          <div class="resource-actions" aria-label="Resource actions">
+          <label class="bundle-picker">
+            <span>Registry</span>
+            <select v-model="selectedRegistry" :disabled="registries.length === 0" @change="emit('requestProject')">
+              <option v-for="registry in registries" :key="registry" :value="registry">{{ registry }}</option>
+            </select>
+          </label>
+          <div class="file-search">
+            <label class="bundle-picker">
+              <span>Search</span>
+              <input
+                v-model="fileSearch"
+                type="search"
+                placeholder="Search paths or names…"
+                :disabled="!selectedBundle || !selectedRegistry"
+                spellcheck="false"
+              />
+            </label>
             <button
               class="close"
               type="button"
-              :disabled="editorLoading || projectLoading"
-              title="Duplicate"
-              aria-label="Duplicate"
-              @click="openCreateDialog(true)"
+              :disabled="!selectedBundle || !selectedRegistry"
+              title="Pick a resource in this registry from the world"
+              aria-label="Pick a resource in this registry from the world"
+              @click="emit('pickResource')"
             >
-              <Copy :size="16" aria-hidden="true" />
-            </button>
-            <button class="save" :disabled="!isDirty || editorLoading || !permissions.apply" @click="emit('save')">
-              Apply
-            </button>
-            <button class="discard" :disabled="!isDirty || editorLoading" @click="emit('discardLocal')">Discard</button>
-            <button
-              class="persist"
-              :disabled="!resourceHasChanges || editorLoading || !permissions.persist"
-              @click="requestConfirmation('persist', selectedPath)"
-            >
-              Persist
+              <Pipette :size="16" aria-hidden="true" />
             </button>
             <button
-              class="discard"
-              :disabled="!resourceHasChanges || editorLoading || !permissions.discard"
-              @click="requestConfirmation('discard', selectedPath)"
+              class="close"
+              type="button"
+              :disabled="!selectedBundle || !selectedRegistry || projectLoading || editorLoading"
+              title="Create a new registry entry"
+              aria-label="Create a new registry entry"
+              @click="openCreateDialog()"
             >
-              Rollback
+              <FilePlus :size="16" aria-hidden="true" />
             </button>
           </div>
+          <div v-if="projectLoading" class="loading" role="status" aria-label="Loading paths">
+            <span class="spinner" aria-hidden="true" />
+          </div>
+          <p v-else-if="filteredFiles.length === 0" class="files-empty" role="status">
+            {{ fileSearch.trim() ? 'No matching files.' : 'No files in this registry.' }}
+          </p>
+          <ul v-else class="files">
+            <li v-for="file in filteredFiles" :key="file.path">
+              <button
+                :class="{ active: file.path === selectedPath }"
+                :title="file.path"
+                @click="emit('openFile', file.path)"
+              >
+                <span class="file-heading">
+                  <span class="file-name">{{ file.name ?? pathWithinRegistry(file.path) }}</span>
+                  <span
+                    v-if="localPaths.includes(file.path)"
+                    class="change-dot local"
+                    title="Unapplied local changes"
+                    role="img"
+                    aria-label="Unapplied local changes"
+                  />
+                  <span
+                    v-if="pendingPaths.includes(file.path)"
+                    class="change-dot pending"
+                    title="Unpersisted changes"
+                    role="img"
+                    aria-label="Unpersisted changes"
+                  />
+                </span>
+                <small>({{ pathWithinRegistry(file.path) }})</small>
+              </button>
+            </li>
+          </ul>
         </div>
-        <SchemaForm
-          v-if="schema && activeTab === 'form'"
-          class="document-form"
-          :readonly="!permissions.apply"
-          :schema="formSchema!"
-          :contents="contents"
-          :registry-options="registryOptions"
-          @update-contents="permissions.apply && (contents = $event)"
-          @search-registry="searchRegistry"
-          @pick-coordinate="emit('pickCoordinate', $event)"
-          @pick-distance="emit('pickDistance', $event)"
-        />
-        <textarea v-else v-model="contents" :readonly="!permissions.apply" spellcheck="false" />
-      </div>
-      <div v-else class="empty">Select a bundle data file.</div>
-      <footer class="status" :class="{ error: statusIsError }">{{ status }}</footer>
-    </main>
-    <dialog
-      ref="createDialog"
-      class="confirmation"
-      aria-labelledby="create-entry-title"
-      @cancel.prevent="closeCreateDialog"
-    >
-      <form @submit.prevent="submitCreate">
-        <h2 id="create-entry-title">{{ duplicating ? 'Duplicate entry' : 'New entry' }}</h2>
-        <label class="bundle-picker">
-          <span>Name</span>
-          <input
-            v-model="entryName"
-            autofocus
-            required
-            autocomplete="off"
-            spellcheck="false"
-            :disabled="createSubmitted"
+        <footer class="browser-footer" aria-label="Batch resource actions">
+          <button
+            class="persist"
+            :disabled="pendingChanges === 0 || !permissions.persistAll"
+            @click="requestConfirmation('persist')"
+          >
+            Persist {{ pendingChanges }} changes
+          </button>
+          <button
+            class="discard"
+            :disabled="pendingChanges === 0 || !permissions.discardAll"
+            @click="requestConfirmation('discard')"
+          >
+            Rollback {{ pendingChanges }} changes
+          </button>
+        </footer>
+      </aside>
+      <main class="editor">
+        <header class="toolbar">
+          <button
+            v-if="selectedPath && enabledField"
+            class="enabled-switch"
+            type="button"
+            role="switch"
+            :aria-checked="parsedContents?.[enabledField] === true"
+            aria-label="Enabled"
+            :title="parsedContents?.[enabledField] === true ? 'Disable resource' : 'Enable resource'"
+            :disabled="editorLoading || !parsedContents || !permissions.apply"
+            @click="toggleEnabled"
+          >
+            <span />
+          </button>
+          <span class="path">
+            <template v-if="selectedPath">
+              <span>{{ selectedFile?.name ?? pathWithinRegistry(selectedPath) }}</span>
+              <small>({{ pathWithinRegistry(selectedPath) }})</small>
+            </template>
+            <template v-else>Select a file</template>
+          </span>
+          <button class="close" @click="emit('close')">Close</button>
+        </header>
+        <div v-if="editorLoading" class="loading" role="status" aria-label="Loading editor">
+          <span class="spinner" aria-hidden="true" />
+        </div>
+        <div v-else-if="selectedPath" class="document">
+          <div class="document-toolbar">
+            <nav class="tabs" aria-label="Editor view">
+              <button v-if="schema" :class="{ active: activeTab === 'form' }" type="button" @click="activeTab = 'form'">
+                Form
+              </button>
+              <button :class="{ active: activeTab === 'json' }" type="button" @click="activeTab = 'json'">
+                Raw JSON
+              </button>
+            </nav>
+            <div class="resource-actions" aria-label="Resource actions">
+              <button
+                class="close"
+                type="button"
+                :disabled="editorLoading || projectLoading"
+                title="Duplicate"
+                aria-label="Duplicate"
+                @click="openCreateDialog(true)"
+              >
+                <Copy :size="16" aria-hidden="true" />
+              </button>
+              <button class="save" :disabled="!isDirty || editorLoading || !permissions.apply" @click="emit('save')">
+                Apply
+              </button>
+              <button class="discard" :disabled="!isDirty || editorLoading" @click="emit('discardLocal')">
+                Discard
+              </button>
+              <button
+                class="persist"
+                :disabled="!resourceHasChanges || editorLoading || !permissions.persist"
+                @click="requestConfirmation('persist', selectedPath)"
+              >
+                Persist
+              </button>
+              <button
+                class="discard"
+                :disabled="!resourceHasChanges || editorLoading || !permissions.discard"
+                @click="requestConfirmation('discard', selectedPath)"
+              >
+                Rollback
+              </button>
+            </div>
+          </div>
+          <SchemaForm
+            v-if="schema && activeTab === 'form'"
+            class="document-form"
+            :readonly="!permissions.apply"
+            :schema="formSchema!"
+            :contents="contents"
+            :registry-options="registryOptions"
+            @update-contents="permissions.apply && (contents = $event)"
+            @search-registry="searchRegistry"
+            @pick-coordinate="emit('pickCoordinate', $event)"
+            @pick-distance="emit('pickDistance', $event)"
           />
-        </label>
-        <p v-if="entryName.trim() && entryNameError" class="name-error" role="alert">{{ entryNameError }}</p>
-        <p v-if="createAttempted && statusIsError && !createSubmitted" class="name-error" role="alert">{{ status }}</p>
+          <textarea v-else v-model="contents" :readonly="!permissions.apply" spellcheck="false" />
+        </div>
+        <div v-else class="empty">Select a bundle data file.</div>
+        <footer class="status" :class="{ error: statusIsError }">{{ status }}</footer>
+      </main>
+      <dialog
+        ref="createDialog"
+        class="confirmation"
+        aria-labelledby="create-entry-title"
+        @cancel.prevent="closeCreateDialog"
+      >
+        <form @submit.prevent="submitCreate">
+          <h2 id="create-entry-title">{{ duplicating ? 'Duplicate entry' : 'New entry' }}</h2>
+          <label class="bundle-picker">
+            <span>Name</span>
+            <input
+              v-model="entryName"
+              autofocus
+              required
+              autocomplete="off"
+              spellcheck="false"
+              :disabled="createSubmitted"
+            />
+          </label>
+          <p v-if="entryName.trim() && entryNameError" class="name-error" role="alert">{{ entryNameError }}</p>
+          <p v-if="createAttempted && statusIsError && !createSubmitted" class="name-error" role="alert">
+            {{ status }}
+          </p>
+          <div class="confirmation-actions">
+            <button class="close" type="button" @click="closeCreateDialog">Cancel</button>
+            <button class="save" type="submit" :disabled="!!entryNameError || createSubmitted">
+              {{ createSubmitted ? 'Creating…' : 'Create' }}
+            </button>
+          </div>
+        </form>
+      </dialog>
+      <dialog
+        ref="confirmationDialog"
+        class="confirmation"
+        aria-labelledby="confirmation-title"
+        @cancel.prevent="confirmation = null"
+      >
+        <h2 id="confirmation-title">{{ confirmation === 'persist' ? 'Persist' : 'Rollback' }} changes?</h2>
+        <p v-if="confirmation === 'persist'">Write pending changes to the following resource files:</p>
+        <p v-else>Restore the file-backed values for the following resources:</p>
+        <ul class="resource-list">
+          <li v-for="path in confirmationPaths" :key="path">{{ path }}</li>
+        </ul>
+        <p v-if="confirmationPaths.length === 0">No pending resources available.</p>
         <div class="confirmation-actions">
-          <button class="close" type="button" @click="closeCreateDialog">Cancel</button>
-          <button class="save" type="submit" :disabled="!!entryNameError || createSubmitted">
-            {{ createSubmitted ? 'Creating…' : 'Create' }}
+          <button class="close" type="button" autofocus @click="confirmation = null">Cancel</button>
+          <button
+            :class="confirmation === 'persist' ? 'persist' : 'discard'"
+            type="button"
+            :disabled="confirmationPaths.length === 0 || !confirmationAllowed"
+            @click="confirmChanges"
+          >
+            {{ confirmation === 'persist' ? 'Persist' : 'Rollback' }} {{ confirmationPaths.length }}
+            {{ confirmationPaths.length === 1 ? 'resource' : 'resources' }}
           </button>
         </div>
-      </form>
-    </dialog>
-    <dialog
-      ref="confirmationDialog"
-      class="confirmation"
-      aria-labelledby="confirmation-title"
-      @cancel.prevent="confirmation = null"
-    >
-      <h2 id="confirmation-title">{{ confirmation === 'persist' ? 'Persist' : 'Rollback' }} changes?</h2>
-      <p v-if="confirmation === 'persist'">Write pending changes to the following resource files:</p>
-      <p v-else>Restore the file-backed values for the following resources:</p>
-      <ul class="resource-list">
-        <li v-for="path in confirmationPaths" :key="path">{{ path }}</li>
-      </ul>
-      <p v-if="confirmationPaths.length === 0">No pending resources available.</p>
-      <div class="confirmation-actions">
-        <button class="close" type="button" autofocus @click="confirmation = null">Cancel</button>
-        <button
-          :class="confirmation === 'persist' ? 'persist' : 'discard'"
-          type="button"
-          :disabled="confirmationPaths.length === 0 || !confirmationAllowed"
-          @click="confirmChanges"
-        >
-          {{ confirmation === 'persist' ? 'Persist' : 'Rollback' }} {{ confirmationPaths.length }}
-          {{ confirmationPaths.length === 1 ? 'resource' : 'resources' }}
-        </button>
-      </div>
-    </dialog>
-  </section>
+      </dialog>
+    </section>
+  </div>
 </template>
 
 <style scoped>
+.file-modal {
+  display: contents;
+}
 .confirmation {
   width: min(640px, 80vw);
   padding: 24px;
@@ -506,7 +516,19 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
   justify-content: flex-end;
   gap: 10px;
 }
+.peek-zone {
+  position: fixed;
+  z-index: 1001;
+  inset: 0 25vw auto;
+  height: 5vh;
+  pointer-events: auto;
+}
+.peek-zone:hover + .project:not(:has(dialog[open])) {
+  opacity: 0.08;
+  backdrop-filter: none;
+}
 .project {
+  transition: opacity 160ms ease;
   position: fixed;
   z-index: 1000;
   inset: 5vh 4vw;
@@ -853,6 +875,9 @@ textarea {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .project {
+    transition: none;
+  }
   .spinner {
     animation-duration: 2s;
   }
