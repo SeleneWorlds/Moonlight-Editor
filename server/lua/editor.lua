@@ -96,7 +96,6 @@ end
 function Editor.registerContextMenuAction(action)
     assert(type(action) == "table", "Context menu action must be a table.")
     assert(type(action.id) == "string" and action.id ~= "", "Action ID must be a non-empty string.")
-    assert(not contextMenuActions[action.id], "Context menu action ID is already registered.")
     assert(type(action.label) == "string" and action.label ~= "", "Action label must be a non-empty string.")
     assert(type(action.execute) == "function", "Action execute must be a function.")
     assert(action.isAvailable == nil or type(action.isAvailable) == "function", "Action availability must be a function.")
