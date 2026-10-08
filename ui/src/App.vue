@@ -175,8 +175,38 @@ const visible = ref(false);
 const bundleOptions = ref<string[]>([]);
 const bundleRegistries = ref<Record<string, string[]>>({});
 const projectFiles = ref<ProjectFile[]>([]);
-const selectedBundle = ref('');
-const selectedRegistry = ref('');
+const SELECTION_STORAGE_KEY = 'moonlight-editor.selection';
+function loadSelection(): { bundle: string; registry: string } {
+  try {
+    const selection: unknown = JSON.parse(window.localStorage.getItem(SELECTION_STORAGE_KEY) ?? 'null');
+    if (
+      typeof selection === 'object' &&
+      selection !== null &&
+      'bundle' in selection &&
+      typeof selection.bundle === 'string' &&
+      'registry' in selection &&
+      typeof selection.registry === 'string'
+    ) {
+      return { bundle: selection.bundle, registry: selection.registry };
+    }
+  } catch {
+    // Storage may be unavailable or contain invalid JSON.
+  }
+  return { bundle: '', registry: '' };
+}
+const savedSelection = loadSelection();
+const selectedBundle = ref(savedSelection.bundle);
+const selectedRegistry = ref(savedSelection.registry);
+watch([selectedBundle, selectedRegistry], ([bundle, registry]) => {
+  if (!bundle || !registry) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(SELECTION_STORAGE_KEY, JSON.stringify({ bundle, registry }));
+  } catch {
+    // Selection still works when browser storage is unavailable.
+  }
+});
 const selectedPath = ref<string | null>(null);
 const entries = ref<Record<string, { contents: string; appliedContents: string; draft?: boolean; registry?: string }>>(
   {},
