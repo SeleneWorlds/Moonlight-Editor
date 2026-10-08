@@ -223,6 +223,16 @@ Network.handlePayload("moonlight-editor:move-camera", function(player, payload)
     player:setCameraToCoordinate(coordinate)
 end)
 
+Network.handlePayload("moonlight-editor:focus-character", function(player)
+    if not Editor.isEnabled(player) then return end
+    local controlled = player:getControlledEntity()
+    if not controlled then return end
+    local coordinate = controlled:getCoordinate()
+    player:getRuntimeData(RUNTIME_DATA_KEY).coordinate = coordinate
+    player:setCameraToFollowControlledEntity()
+    player:setCameraToCoordinate(coordinate, controlled:getDimension())
+end)
+
 Network.handlePayload("moonlight-editor:request-state", function(player)
     local enabled = Editor.isEnabled(player)
     Network.sendToPlayer(player, "moonlight-editor:editor-state", editorState(enabled))

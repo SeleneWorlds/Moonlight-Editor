@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { Focus, Database, ArrowDown, ArrowUp } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import { pickedDistance, projectedCircle } from './distance';
 import { useSelene, editorHttpRequest, type ClientNetworkPayload, type Coordinate } from './selene';
@@ -1014,7 +1015,7 @@ onBeforeUnmount(() => {
       aria-label="Camera up"
       @click="moveCameraLevel(1, $event)"
     >
-      ↑
+      <ArrowUp :size="16" aria-hidden="true" />
     </button>
     <button
       type="button"
@@ -1022,9 +1023,20 @@ onBeforeUnmount(() => {
       aria-label="Camera down"
       @click="moveCameraLevel(-1, $event)"
     >
-      ↓
+      <ArrowDown :size="16" aria-hidden="true" />
     </button>
-    <button type="button" @click="setProjectVisible(true)">Registry Editor</button>
+    <button
+      type="button"
+      title="Focus Character"
+      @click="selene.network.sendToServer('moonlight-editor:focus-character')"
+    >
+      <Focus :size="16" aria-hidden="true" />
+      Focus Character
+    </button>
+    <button type="button" @click="setProjectVisible(true)">
+        <Database :size="16" aria-hidden="true" />
+        Registry Editor
+    </button>
   </nav>
   <div v-if="enabled && !pickerActive" class="gizmos">
     <button
@@ -1295,6 +1307,9 @@ onBeforeUnmount(() => {
   pointer-events: auto;
 }
 .actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 5px 13px;
   border: 1px solid rgba(251, 113, 133, 0.42);
   border-radius: 6px;
