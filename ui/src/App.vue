@@ -1024,7 +1024,7 @@ onBeforeUnmount(() => {
     >
       ↓
     </button>
-    <button type="button" @click="setProjectVisible(true)">Resources</button>
+    <button type="button" @click="setProjectVisible(true)">Registry Editor</button>
   </nav>
   <div v-if="enabled && !pickerActive" class="gizmos">
     <button
