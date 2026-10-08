@@ -244,6 +244,48 @@ const localPaths = computed(() =>
 const pendingChanges = ref(0);
 const pendingPaths = ref<string[]>([]);
 const confirmation = ref<'persist' | 'discard' | null>(null);
+const resourcePermissions = ref({ apply: false, persist: false, discard: false, persistAll: false, discardAll: false });
+let permissionRevision = 0;
+async function refreshResourcePermissions(): Promise<void> {
+  const revision = ++permissionRevision;
+  resourcePermissions.value = { apply: false, persist: false, discard: false, persistAll: false, discardAll: false };
+  if (!connected.value || !visible.value) {
+    return;
+  }
+  const path = selectedPath.value;
+  const target = path ? { path } : {};
+  try {
+    const result = await selene.http.request(
+      '/resources/permissions',
+      {
+        checks: [
+          { operation: 'save-file', request: { ...target, contents: contents.value } },
+          { operation: 'persist-changes', request: target },
+          { operation: 'discard-changes', request: target },
+          { operation: 'persist-changes', request: {} },
+          { operation: 'discard-changes', request: {} },
+        ],
+      },
+      'POST',
+    );
+    if (revision !== permissionRevision || !Array.isArray(result) || result.length !== 5) {
+      return;
+    }
+    resourcePermissions.value = {
+      apply: path !== null && result[0] === true,
+      persist: path !== null && result[1] === true,
+      discard: path !== null && result[2] === true,
+      persistAll: result[3] === true,
+      discardAll: result[4] === true,
+    };
+  } catch {
+    // Controls remain disabled when the permission check fails.
+  }
+}
+watch([selectedPath, selectedBundle, selectedRegistry, pendingPaths, connected, visible], () => {
+  void refreshResourcePermissions();
+});
+
 const projectLoading = ref(false);
 const schemaLoading = ref(false);
 const fileLoading = ref(false);
@@ -457,7 +499,7 @@ function createFile(name: string, duplicate = false): void {
 }
 
 function save(): void {
-  if (!selectedPath.value || !isDirty.value) {
+  if (!selectedPath.value || !isDirty.value || !resourcePermissions.value.apply) {
     return;
   }
   if (applying.has(selectedPath.value)) {
@@ -483,7 +525,10 @@ function discardLocalChanges(): void {
 }
 
 function persistChanges(path?: string): void {
-  if (pendingChanges.value === 0) {
+  if (
+    pendingChanges.value === 0 ||
+    !(path ? resourcePermissions.value.persist : resourcePermissions.value.persistAll)
+  ) {
     return;
   }
   requestEditor('persist-changes', path ? { path } : {});
@@ -491,7 +536,10 @@ function persistChanges(path?: string): void {
 }
 
 function discardChanges(path?: string): void {
-  if (pendingChanges.value === 0) {
+  if (
+    pendingChanges.value === 0 ||
+    !(path ? resourcePermissions.value.discard : resourcePermissions.value.discardAll)
+  ) {
     return;
   }
   requestEditor('discard-changes', path ? { path } : {});
@@ -1203,6 +1251,7 @@ onBeforeUnmount(() => {
     :editor-loading="fileLoading || schemaLoading"
     :selected-path="selectedPath"
     :is-dirty="isDirty"
+    :permissions="resourcePermissions"
     :pending-changes="pendingChanges"
     :pending-paths="pendingPaths"
     :local-paths="localPaths"

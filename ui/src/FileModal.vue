@@ -17,6 +17,7 @@ const props = defineProps<{
   editorLoading: boolean;
   selectedPath: string | null;
   isDirty: boolean;
+  permissions: { apply: boolean; persist: boolean; discard: boolean; persistAll: boolean; discardAll: boolean };
   pendingChanges: number;
   pendingPaths: string[];
   localPaths: string[];
@@ -152,6 +153,13 @@ const resourceHasChanges = computed(
   () => props.selectedPath !== null && props.pendingPaths.includes(props.selectedPath),
 );
 
+const confirmationAllowed = computed(() => {
+  if (confirmation.value === 'persist') {
+    return confirmationPath.value === null ? props.permissions.persistAll : props.permissions.persist;
+  }
+  return confirmationPath.value === null ? props.permissions.discardAll : props.permissions.discard;
+});
+
 function requestConfirmation(action: 'persist' | 'discard', path: string | null = null): void {
   confirmationPath.value = path;
   confirmation.value = action;
@@ -167,6 +175,9 @@ watch(confirmation, (action) => {
 });
 
 function confirmChanges(): void {
+  if (!confirmationAllowed.value) {
+    return;
+  }
   const action = confirmation.value;
   const path = confirmationPath.value ?? undefined;
   const hasChanges = confirmationPaths.value.length > 0;
@@ -303,10 +314,18 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
         </ul>
       </div>
       <footer class="browser-footer" aria-label="Batch resource actions">
-        <button class="persist" :disabled="pendingChanges === 0" @click="requestConfirmation('persist')">
+        <button
+          class="persist"
+          :disabled="pendingChanges === 0 || !permissions.persistAll"
+          @click="requestConfirmation('persist')"
+        >
           Persist {{ pendingChanges }} changes
         </button>
-        <button class="discard" :disabled="pendingChanges === 0" @click="requestConfirmation('discard')">
+        <button
+          class="discard"
+          :disabled="pendingChanges === 0 || !permissions.discardAll"
+          @click="requestConfirmation('discard')"
+        >
           Rollback {{ pendingChanges }} changes
         </button>
       </footer>
@@ -359,18 +378,20 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
             >
               <Copy :size="16" aria-hidden="true" />
             </button>
-            <button class="save" :disabled="!isDirty || editorLoading" @click="emit('save')">Apply</button>
+            <button class="save" :disabled="!isDirty || editorLoading || !permissions.apply" @click="emit('save')">
+              Apply
+            </button>
             <button class="discard" :disabled="!isDirty || editorLoading" @click="emit('discardLocal')">Discard</button>
             <button
               class="persist"
-              :disabled="!resourceHasChanges || editorLoading"
+              :disabled="!resourceHasChanges || editorLoading || !permissions.persist"
               @click="requestConfirmation('persist', selectedPath)"
             >
               Persist
             </button>
             <button
               class="discard"
-              :disabled="!resourceHasChanges || editorLoading"
+              :disabled="!resourceHasChanges || editorLoading || !permissions.discard"
               @click="requestConfirmation('discard', selectedPath)"
             >
               Rollback
@@ -440,7 +461,7 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
         <button
           :class="confirmation === 'persist' ? 'persist' : 'discard'"
           type="button"
-          :disabled="confirmationPaths.length === 0"
+          :disabled="confirmationPaths.length === 0 || !confirmationAllowed"
           @click="confirmChanges"
         >
           {{ confirmation === 'persist' ? 'Persist' : 'Rollback' }} {{ confirmationPaths.length }}
