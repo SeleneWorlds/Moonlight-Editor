@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { Eye, Locate, Radius } from '@lucide/vue';
+import { ExternalLink, Eye, Locate, Radius } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import { useSelene, type Coordinate } from './selene';
 import RegistryVisual from './RegistryVisual.vue';
@@ -206,6 +206,14 @@ function selectedRegistryOption(name: string, registry: string): RegistryOption 
   return typeof value === 'string' ? knownRegistryOptions[registry]?.[value] : undefined;
 }
 
+function openRegistryEntry(name: string, registry: string): void {
+  const value = parsed.value?.[name];
+  if (typeof value === 'string' && value) {
+    openRegistryField.value = null;
+    selene.network.sendToServer('moonlight-editor:open-registry-entry', { registry, value });
+  }
+}
+
 function selectRegistry(name: string, option: RegistryOption): void {
   update(name, option.value);
   registryQueries[name] = option.label;
@@ -408,6 +416,16 @@ function closeRegistry(name: string): void {
             @input="searchRegistry(field.name, field.registry, $event)"
             @blur="closeRegistry(field.name)"
           />
+          <button
+            type="button"
+            class="open-registry-entry"
+            :disabled="typeof parsed[field.name] !== 'string' || !parsed[field.name]"
+            :aria-label="`Open ${label(field.name)} registry entry in the form`"
+            title="Open registry entry in the form"
+            @click="openRegistryEntry(field.name, field.registry)"
+          >
+            <ExternalLink :size="16" aria-hidden="true" />
+          </button>
         </div>
         <div v-if="openRegistryField === field.name" :id="`registry-${field.name}`" class="options" role="listbox">
           <button
@@ -591,6 +609,33 @@ select:focus {
 }
 .registry-control {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.registry-control input {
+  min-width: 0;
+}
+.open-registry-entry {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(251, 113, 133, 0.42);
+  border-radius: 6px;
+  color: #ffe4e6;
+  background: rgba(251, 113, 133, 0.14);
+  cursor: pointer;
+}
+.open-registry-entry:hover:not(:disabled),
+.open-registry-entry:focus-visible {
+  background: rgba(251, 113, 133, 0.24);
+}
+.open-registry-entry:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .registry-control.has-visual input {
   min-height: 54px;

@@ -207,6 +207,21 @@ Network.handlePayload("moonlight-editor:request-gizmos", function(player, payloa
     Network.sendToPlayer(player, "moonlight-editor:gizmos-end", {})
 end)
 
+Network.handlePayload("moonlight-editor:open-registry-entry", function(player, payload)
+    if not Editor.isEnabled(player) or type(payload) ~= "table"
+        or type(payload.registry) ~= "string" or type(payload.value) ~= "string"
+        or payload.registry == "" or payload.value == "" then return end
+    local ok, message = pcall(function()
+        local entry = Registries.findByName(payload.registry, payload.value)
+        local path = entry and entry:getSourcePath()
+        if type(path) ~= "string" or path == "" then
+            error("Registry entry has no editable source file.")
+        end
+        openFile(player, path)
+    end)
+    if not ok then sendError(player, message) end
+end)
+
 Network.handlePayload("moonlight-editor:lookup-coordinate", function(player, payload)
     if not Editor.isEnabled(player) or type(payload) ~= "table" then return end
     if type(payload.x) ~= "number" or type(payload.y) ~= "number" or type(payload.z) ~= "number"
