@@ -270,6 +270,7 @@ let dragClientX = 0;
 let dragClientY = 0;
 let dragCameraPosition: { x: number; y: number } | null = null;
 let dragSequence = 0;
+let cameraZoom = 1;
 
 function bundleFromPath(path: string): string {
   const dataDirectory = path.search(/\/(?:common|server)\/data\//);
@@ -694,11 +695,16 @@ onMounted(() => {
       }
       enabled.value = payload.enabled === true;
       if (enabled.value) {
+        selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom: cameraZoom });
         requestGizmos();
       } else {
         gizmos.value = [];
       }
       if (!enabled.value) {
+        if (cameraZoom !== 1) {
+          cameraZoom = 1;
+          void selene.world.setCameraZoom(1);
+        }
         releasePickerKeys?.();
         releasePickerKeys = undefined;
         pickingCoordinateField = null;
@@ -911,6 +917,17 @@ onMounted(() => {
         requestBundles();
       }
     }),
+    selene.input.onScroll(({ amountY }) => {
+      if (!enabled.value || dragging.value || !Number.isFinite(amountY) || amountY === 0) {
+        return;
+      }
+      cameraZoom = Math.min(1, Math.max(0.25, cameraZoom * Math.pow(1.1, -amountY)));
+      const zoom = cameraZoom;
+      void selene.world.setCameraZoom(zoom).then((appliedZoom) => {
+        selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom: appliedZoom });
+        projectionRevision.value += 1;
+      });
+    }),
     selene.input.onPointerDown((event) => {
       if (!enabled.value || event.button !== 0 || suppressWorldPointer) {
         return;
@@ -940,8 +957,8 @@ onMounted(() => {
       if (dragCameraPosition && moved) {
         void selene.world
           .setCameraPosition({
-            x: dragCameraPosition.x - (event.clientX - dragClientX),
-            y: dragCameraPosition.y - (event.clientY - dragClientY),
+            x: dragCameraPosition.x - (event.clientX - dragClientX) / cameraZoom,
+            y: dragCameraPosition.y - (event.clientY - dragClientY) / cameraZoom,
           })
           .then((coordinate) => {
             projectionRevision.value += 1;
@@ -998,6 +1015,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  if (cameraZoom !== 1) {
+    void selene.world.setCameraZoom(1);
+    selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom: 1 });
+  }
   closeInlineForm();
   window.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('resize', refreshInlinePosition);

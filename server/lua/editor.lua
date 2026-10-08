@@ -51,6 +51,7 @@ local function setEnabled(player, enabled)
     player:removeRuntimeData(INLINE_SESSION_KEY)
     local state = player:getRuntimeData(RUNTIME_DATA_KEY)
     state.enabled = enabled
+    player:setCameraZoom(1)
     if enabled then
         if not state.coordinate then
             local controlled = player:getControlledEntity()
@@ -280,6 +281,13 @@ Network.handlePayload("moonlight-editor:save-inline-form", function(player, payl
     Network.sendToPlayer(player, "moonlight-editor:inline-form-saved", {
         id = session.id, success = ok, message = ok and "Changes applied" or tostring(message),
     })
+end)
+
+Network.handlePayload("moonlight-editor:zoom-camera", function(player, payload)
+    if not Editor.isEnabled(player) or type(payload) ~= "table" then return end
+    local zoom = payload.zoom
+    if type(zoom) ~= "number" or zoom ~= zoom or zoom < 0.25 or zoom > 1 then return end
+    player:setCameraZoom(zoom)
 end)
 
 Network.handlePayload("moonlight-editor:move-camera", function(player, payload)

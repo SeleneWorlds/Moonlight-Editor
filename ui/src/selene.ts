@@ -29,6 +29,7 @@ export interface SeleneUiApi {
   readonly input: {
     captureKeys(...keys: string[]): () => void;
     captureText(): () => void;
+    onScroll(callback: (event: { amountY: number }) => void): () => void;
     onPointerDown(callback: (event: SelenePointerEvent) => void): () => void;
     onPointerMove(callback: (event: SelenePointerEvent) => void): () => void;
     onPointerUp(callback: (event: SelenePointerEvent) => void): () => void;
@@ -40,6 +41,7 @@ export interface SeleneUiApi {
   };
   readonly world: {
     getCameraCoordinate(): Coordinate;
+    setCameraZoom(zoom: number): Promise<number>;
     getCameraPosition(): Promise<{ x: number; y: number }>;
     setCameraPosition(position: { x: number; y: number }): Promise<Coordinate>;
     projectCoordinate(coordinate: Coordinate): { x: number; y: number };
@@ -114,6 +116,7 @@ export const createMockSeleneUiApi = (): SeleneUiApi => ({
   input: {
     captureKeys: () => () => undefined,
     captureText: () => () => undefined,
+    onScroll: () => () => undefined,
     onPointerDown: () => () => undefined,
     onPointerMove: () => () => undefined,
     onPointerUp: () => () => undefined,
@@ -128,6 +131,7 @@ export const createMockSeleneUiApi = (): SeleneUiApi => ({
   },
   world: {
     getCameraCoordinate: () => ({ x: 0, y: 0, z: 0 }),
+    setCameraZoom: async (zoom) => zoom,
     getCameraPosition: async () => ({ x: 0, y: 0 }),
     setCameraPosition: async () => ({ x: 0, y: 0, z: 0 }),
     projectCoordinate: ({ x, y, z }) => ({ x: (x + y) * 38, y: -((x - y) * 19 + z * 114) }),
