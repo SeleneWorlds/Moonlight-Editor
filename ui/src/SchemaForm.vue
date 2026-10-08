@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { Locate, Radius } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import RegistryVisual from './RegistryVisual.vue';
 import SchemaMap from './SchemaMap.vue';
@@ -267,12 +268,13 @@ function closeRegistry(name: string): void {
         <button
           type="button"
           :disabled="!distancePick(field)"
+          :aria-label="`Preview and pick ${label(field.name)} in the world`"
           :title="
             distancePick(field) ? 'Preview and pick distance in the world' : 'Set the referenced coordinate first'
           "
           @click="previewDistance(field)"
         >
-          📐
+          <Radius :size="16" aria-hidden="true" />
         </button>
       </div>
       <input
@@ -346,7 +348,7 @@ function closeRegistry(name: string): void {
           title="Pick coordinate from world"
           @click="emit('pickCoordinate', field.name)"
         >
-          📌
+          <Locate :size="16" aria-hidden="true" />
         </button>
       </div>
       <div v-else-if="field.type === 'registry' && field.registry" class="registry-input">
@@ -493,6 +495,8 @@ select:focus {
   gap: 8px;
 }
 .distance-input button {
+  display: grid;
+  place-items: center;
   padding: 8px 12px;
   border: 1px solid #3f3f46;
   border-radius: 6px;
@@ -519,6 +523,8 @@ select:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .pick-coordinate {
+  display: grid;
+  place-items: center;
   align-self: end;
   width: 36px;
   height: 36px;

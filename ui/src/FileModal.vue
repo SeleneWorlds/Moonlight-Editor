@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
+import { Copy, FilePlus, Pipette } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import SchemaForm from './SchemaForm.vue';
 
@@ -253,7 +254,7 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
             aria-label="Pick a resource in this registry from the world"
             @click="emit('pickResource')"
           >
-            📌
+            <Pipette :size="16" aria-hidden="true" />
           </button>
           <button
             class="close"
@@ -263,7 +264,7 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
             aria-label="Create a new registry entry"
             @click="openCreateDialog()"
           >
-            📄
+            <FilePlus :size="16" aria-hidden="true" />
           </button>
         </div>
         <div v-if="projectLoading" class="loading" role="status" aria-label="Loading paths">
@@ -356,7 +357,7 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
               aria-label="Duplicate"
               @click="openCreateDialog(true)"
             >
-              📋
+              <Copy :size="16" aria-hidden="true" />
             </button>
             <button class="save" :disabled="!isDirty || editorLoading" @click="emit('save')">Apply</button>
             <button class="discard" :disabled="!isDirty || editorLoading" @click="emit('discardLocal')">Discard</button>
