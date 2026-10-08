@@ -55,7 +55,7 @@ const formSchema = computed(() =>
 
 function toggleEnabled(): void {
   const field = enabledField.value;
-  if (field && parsedContents.value) {
+  if (props.permissions.apply && field && parsedContents.value) {
     contents.value = `${JSON.stringify({ ...parsedContents.value, [field]: parsedContents.value[field] !== true }, null, 2)}\n`;
   }
 }
@@ -340,7 +340,7 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
           :aria-checked="parsedContents?.[enabledField] === true"
           aria-label="Enabled"
           :title="parsedContents?.[enabledField] === true ? 'Disable resource' : 'Enable resource'"
-          :disabled="editorLoading || !parsedContents"
+          :disabled="editorLoading || !parsedContents || !permissions.apply"
           @click="toggleEnabled"
         >
           <span />
@@ -401,15 +401,16 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
         <SchemaForm
           v-if="schema && activeTab === 'form'"
           class="document-form"
+          :readonly="!permissions.apply"
           :schema="formSchema!"
           :contents="contents"
           :registry-options="registryOptions"
-          @update-contents="contents = $event"
+          @update-contents="permissions.apply && (contents = $event)"
           @search-registry="searchRegistry"
           @pick-coordinate="emit('pickCoordinate', $event)"
           @pick-distance="emit('pickDistance', $event)"
         />
-        <textarea v-else v-model="contents" spellcheck="false" />
+        <textarea v-else v-model="contents" :readonly="!permissions.apply" spellcheck="false" />
       </div>
       <div v-else class="empty">Select a bundle data file.</div>
       <footer class="status" :class="{ error: statusIsError }">{{ status }}</footer>

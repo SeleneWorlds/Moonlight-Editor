@@ -276,8 +276,10 @@ async function refreshResourcePermissions(): Promise<void> {
       persistAll: result[3] === true,
       discardAll: result[4] === true,
     };
-  } catch {
-    // Controls remain disabled when the permission check fails.
+  } catch (error: unknown) {
+    if (revision === permissionRevision) {
+      setStatus(`Permission check failed: ${error instanceof Error ? error.message : String(error)}`, true);
+    }
   }
 }
 watch([selectedPath, selectedBundle, selectedRegistry, pendingPaths, connected, visible], () => {

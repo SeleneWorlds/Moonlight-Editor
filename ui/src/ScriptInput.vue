@@ -2,7 +2,7 @@
 import { ref, useId, watch } from 'vue';
 import { useSelene } from './selene';
 
-const props = defineProps<{ value: string; required: boolean }>();
+const props = defineProps<{ value: string; required: boolean; readonly?: boolean }>();
 const emit = defineEmits<{ select: [value: string] }>();
 const selene = useSelene();
 const id = useId();
@@ -57,6 +57,9 @@ watch(
 );
 
 function search(value: string): void {
+  if (props.readonly) {
+    return;
+  }
   query.value = value;
   open.value = true;
   loading.value = true;
@@ -74,12 +77,18 @@ function close(): void {
 }
 
 function select(value: string): void {
+  if (props.readonly) {
+    return;
+  }
   emit('select', value);
   close();
   query.value = value;
 }
 
 function keydown(event: KeyboardEvent): void {
+  if (props.readonly) {
+    return;
+  }
   if (event.key === 'Escape') {
     event.preventDefault();
     event.stopPropagation();
@@ -106,6 +115,7 @@ function keydown(event: KeyboardEvent): void {
 <template>
   <div class="script-input">
     <input
+      :readonly="readonly"
       :value="query"
       type="text"
       role="combobox"
@@ -121,7 +131,7 @@ function keydown(event: KeyboardEvent): void {
       @blur="close"
       @keydown="keydown"
     />
-    <div v-if="open" :id="id" class="options" role="listbox">
+    <div v-if="open && !readonly" :id="id" class="options" role="listbox">
       <button
         v-for="(option, index) in options"
         :id="`${id}-${index}`"

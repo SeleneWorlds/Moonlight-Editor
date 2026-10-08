@@ -7,6 +7,7 @@ import RegistryVisual from './RegistryVisual.vue';
 type RegistryOption = { value: string; label: string; visual?: string };
 
 const props = defineProps<{
+  readonly?: boolean;
   keyType: SchemaDefinition;
   valueType: SchemaDefinition;
   contents: string;
@@ -71,6 +72,9 @@ const selectedKey = computed(() => {
 const duplicate = computed(() => Object.prototype.hasOwnProperty.call(entries.value, selectedKey.value));
 
 function add(): void {
+  if (props.readonly) {
+    return;
+  }
   if (!selectedKey.value || duplicate.value) {
     return;
   }
@@ -85,6 +89,9 @@ function add(): void {
 }
 
 function remove(key: string): void {
+  if (props.readonly) {
+    return;
+  }
   const next = { ...entries.value };
   delete next[key];
   emit('updateContents', JSON.stringify(next));
@@ -98,10 +105,16 @@ function entryLabel(key: string): string {
 }
 
 function updateEntry(key: string, contents: string): void {
+  if (props.readonly) {
+    return;
+  }
   emit('updateContents', JSON.stringify({ ...entries.value, [key]: JSON.parse(contents).value }));
 }
 
 function updateInlineEntry(key: string, contents: string): void {
+  if (props.readonly) {
+    return;
+  }
   emit('updateContents', JSON.stringify({ ...entries.value, [key]: JSON.parse(contents) }));
 }
 
@@ -149,7 +162,7 @@ function valueLabel(value: unknown): string {
           <RegistryVisual v-if="entryOption(key)?.visual" :identifier="entryOption(key)!.visual!" />
           <span>{{ entryLabel(key) }}</span>
         </span>
-        <button type="button" :aria-label="`Remove ${key}`" @click="remove(key)">Remove</button>
+        <button :disabled="readonly" type="button" :aria-label="`Remove ${key}`" @click="remove(key)">Remove</button>
       </div>
       <SchemaForm
         v-if="inlineProperties"
@@ -157,6 +170,7 @@ function valueLabel(value: unknown): string {
         :schema="inlineProperties"
         :contents="inlineContents(value)"
         :registry-options="registryOptions"
+        :readonly="readonly"
         @update-contents="updateInlineEntry(key, $event)"
         @search-registry="(registry, query, lookup) => emit('searchRegistry', registry, query, lookup)"
         @pick-coordinate="emit('pickCoordinate', `${key}.${$event}`)"
@@ -168,6 +182,7 @@ function valueLabel(value: unknown): string {
         :field-labels="{ value: valueLabel(value) }"
         :contents="JSON.stringify({ value })"
         :registry-options="registryOptions"
+        :readonly="readonly"
         @update-contents="updateEntry(key, $event)"
         @search-registry="(registry, query, lookup) => emit('searchRegistry', registry, query, lookup)"
         @pick-coordinate="emit('pickCoordinate', `${key}${$event === 'value' ? '' : $event.slice(5)}`)"
@@ -176,12 +191,13 @@ function valueLabel(value: unknown): string {
         "
       />
     </div>
-    <div class="add-entry">
+    <div v-if="!readonly" class="add-entry">
       <SchemaForm
         :key="contents"
         :schema="{ key: keyType }"
         :contents="draft"
         :registry-options="registryOptions"
+        :readonly="readonly"
         @update-contents="draft = $event"
         @search-registry="(registry, query, lookup) => emit('searchRegistry', registry, query, lookup)"
       />

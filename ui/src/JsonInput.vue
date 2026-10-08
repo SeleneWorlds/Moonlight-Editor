@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 
-const props = defineProps<{ value: unknown }>();
+const props = defineProps<{ value: unknown; readonly?: boolean }>();
 const emit = defineEmits<{ updateValue: [value: unknown] }>();
 const draft = ref('');
 const invalid = ref(false);
@@ -15,6 +15,9 @@ watch(
 );
 
 function update(event: Event): void {
+  if (props.readonly) {
+    return;
+  }
   draft.value = (event.target as HTMLTextAreaElement).value;
   try {
     const value: unknown = JSON.parse(draft.value);
@@ -28,7 +31,7 @@ function update(event: Event): void {
 
 <template>
   <div class="json-input">
-    <textarea :value="draft" :aria-invalid="invalid" rows="4" @input="update" />
+    <textarea :readonly="readonly" :value="draft" :aria-invalid="invalid" rows="4" @input="update" />
     <small v-if="invalid" role="status">Enter a valid JSON value.</small>
   </div>
 </template>

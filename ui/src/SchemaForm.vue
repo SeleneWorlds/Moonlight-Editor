@@ -14,6 +14,7 @@ type JsonObject = Record<string, unknown>;
 type RegistryOption = { value: string; label: string; visual?: string };
 
 const props = defineProps<{
+  readonly?: boolean;
   schema: Record<string, SchemaDefinition>;
   contents: string;
   registryOptions: Record<string, RegistryOption[]>;
@@ -87,14 +88,14 @@ function label(name: string): string {
 }
 
 function update(name: string, value: unknown): void {
-  if (!parsed.value) {
+  if (props.readonly || !parsed.value) {
     return;
   }
   emit('updateContents', `${JSON.stringify({ ...parsed.value, [name]: value }, null, 2)}\n`);
 }
 
 function remove(name: string): void {
-  if (!parsed.value) {
+  if (props.readonly || !parsed.value) {
     return;
   }
   const next = { ...parsed.value };
@@ -189,6 +190,9 @@ function rangeValue(name: string, bound: 'min' | 'max'): number | undefined {
 }
 
 function openRegistry(name: string, registry: string): void {
+  if (props.readonly) {
+    return;
+  }
   registryQueries[name] = selectedRegistryOption(name, registry)?.label ?? String(parsed.value?.[name] ?? '');
   openRegistryField.value = name;
   emit('searchRegistry', registry, registryQueries[name] ?? '');
@@ -244,7 +248,9 @@ function closeRegistry(name: string): void {
       <component :is="['object', 'map', 'array'].includes(field.type) ? 'summary' : 'span'" class="heading">
         {{ fieldLabels?.[field.name] ?? label(field.name) }}
         <small v-if="field.optional">optional</small>
-        <button v-if="field.optional && field.name in parsed" type="button" @click="remove(field.name)">Clear</button>
+        <button v-if="!readonly && field.optional && field.name in parsed" type="button" @click="remove(field.name)">
+          Clear
+        </button>
       </component>
       <SchemaMap
         v-if="field.type === 'map' && field.keyType && field.valueType"
@@ -252,6 +258,7 @@ function closeRegistry(name: string): void {
         :value-type="field.valueType"
         :contents="objectContents(field.name)"
         :registry-options="registryOptions"
+        :readonly="readonly"
         @update-contents="updateObject(field.name, $event)"
         @search-registry="(registry, query, lookup) => emit('searchRegistry', registry, query, lookup)"
         @pick-coordinate="emit('pickCoordinate', `${field.name}.${$event}`)"
@@ -262,12 +269,14 @@ function closeRegistry(name: string): void {
         :value-type="field.valueType"
         :contents="arrayContents(field.name)"
         :registry-options="registryOptions"
+        :readonly="readonly"
         @update-contents="updateObject(field.name, $event)"
         @search-registry="(registry, query, lookup) => emit('searchRegistry', registry, query, lookup)"
         @pick-coordinate="emit('pickCoordinate', `${field.name}.${$event}`)"
         @pick-distance="emit('pickDistance', { ...$event, field: `${field.name}.${$event.field}` })"
       />
       <JsonInput
+        :readonly="readonly"
         v-else-if="field.type === 'any'"
         :value="parsed[field.name]"
         @update-value="update(field.name, $event)"
@@ -278,6 +287,7 @@ function closeRegistry(name: string): void {
         :schema="field.properties"
         :contents="objectContents(field.name)"
         :registry-options="registryOptions"
+        :readonly="readonly"
         @update-contents="updateObject(field.name, $event)"
         @search-registry="(registry, query, lookup) => emit('searchRegistry', registry, query, lookup)"
         @pick-coordinate="emit('pickCoordinate', `${field.name}.${$event}`)"
@@ -285,6 +295,7 @@ function closeRegistry(name: string): void {
       />
       <div v-else-if="field.type === 'distance'" class="distance-input">
         <input
+          :readonly="readonly"
           :value="parsed[field.name] as number | undefined"
           type="number"
           step="1"
@@ -295,7 +306,7 @@ function closeRegistry(name: string): void {
         />
         <button
           type="button"
-          :disabled="!distancePick(field)"
+          :disabled="readonly || !distancePick(field)"
           :aria-label="`Preview and pick ${label(field.name)} in the world`"
           :title="
             distancePick(field) ? 'Preview and pick distance in the world' : 'Set the referenced coordinate first'
@@ -306,6 +317,7 @@ function closeRegistry(name: string): void {
         </button>
       </div>
       <input
+        :readonly="readonly"
         v-else-if="field.type === 'integer' || field.type === 'number' || field.type === 'Direction'"
         :value="parsed[field.name] as number | undefined"
         type="number"
@@ -314,6 +326,7 @@ function closeRegistry(name: string): void {
         @input="numberValue(field.name, $event)"
       />
       <input
+        :readonly="readonly"
         v-else-if="field.type === 'string'"
         :value="parsed[field.name] as string | undefined"
         type="text"
@@ -321,19 +334,23 @@ function closeRegistry(name: string): void {
         @input="update(field.name, ($event.target as HTMLInputElement).value)"
       />
       <ScriptInput
+        :readonly="readonly"
         v-else-if="field.type === 'script'"
         :value="String(parsed[field.name] ?? '')"
         :required="!field.optional"
         @select="update(field.name, $event)"
       />
       <input
+        :readonly="readonly"
         v-else-if="field.type === 'boolean' || field.type === 'enabled'"
         :checked="parsed[field.name] === true"
         class="checkbox"
         type="checkbox"
+        :disabled="readonly"
         @change="update(field.name, ($event.target as HTMLInputElement).checked)"
       />
       <select
+        :disabled="readonly"
         v-else-if="field.type === 'enum'"
         :value="parsed[field.name]"
         :required="!field.optional"
@@ -350,6 +367,7 @@ function closeRegistry(name: string): void {
         </option>
       </select>
       <RangeInput
+        :readonly="readonly"
         v-else-if="field.type === 'range'"
         :minimum="field.min"
         :maximum="field.max"
@@ -363,6 +381,7 @@ function closeRegistry(name: string): void {
         <label v-for="axis in ['x', 'y', 'z'] as const" :key="axis">
           <span>{{ axis.toUpperCase() }}</span>
           <input
+            :readonly="readonly"
             :value="coordinateValue(field.name, axis)"
             type="number"
             step="1"
@@ -372,6 +391,7 @@ function closeRegistry(name: string): void {
         <button
           type="button"
           class="pick-coordinate"
+          :disabled="readonly"
           :aria-label="`Pick ${label(field.name)} from world`"
           title="Pick coordinate from world"
           @click="emit('pickCoordinate', field.name)"
@@ -400,6 +420,7 @@ function closeRegistry(name: string): void {
             :identifier="selectedRegistryOption(field.name, field.registry)!.visual!"
           />
           <input
+            :readonly="readonly"
             :value="
               registryQueries[field.name] ??
               selectedRegistryOption(field.name, field.registry)?.label ??
@@ -427,7 +448,12 @@ function closeRegistry(name: string): void {
             <ExternalLink :size="16" aria-hidden="true" />
           </button>
         </div>
-        <div v-if="openRegistryField === field.name" :id="`registry-${field.name}`" class="options" role="listbox">
+        <div
+          v-if="!readonly && openRegistryField === field.name"
+          :id="`registry-${field.name}`"
+          class="options"
+          role="listbox"
+        >
           <button
             v-for="option in registryOptions[field.registry] ?? []"
             :key="option.value"
@@ -447,6 +473,7 @@ function closeRegistry(name: string): void {
         </div>
       </div>
       <input
+        :readonly="readonly"
         v-else
         :value="String(parsed[field.name] ?? '')"
         type="text"

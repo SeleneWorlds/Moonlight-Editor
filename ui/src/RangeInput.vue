@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 const props = defineProps<{
+  readonly?: boolean;
   minimum?: number;
   maximum?: number;
   lower?: number;
@@ -26,6 +27,9 @@ const trackStyle = computed(() => {
   };
 });
 function update(bound: 'min' | 'max', event: Event): void {
+  if (props.readonly) {
+    return;
+  }
   const input = event.target as HTMLInputElement;
   if (input.value === '' || !Number.isFinite(input.valueAsNumber)) {
     return;
@@ -50,6 +54,7 @@ function update(bound: 'min' | 'max', event: Event): void {
         v-for="bound in ['min', 'max'] as const"
         :key="bound"
         type="range"
+        :disabled="readonly"
         :min="minimum"
         :max="maximum"
         step="1"
@@ -64,6 +69,7 @@ function update(bound: 'min' | 'max', event: Event): void {
         <span>{{ bound === 'min' ? 'Min' : 'Max' }}</span>
         <input
           type="number"
+          :readonly="readonly"
           step="1"
           :value="bound === 'min' ? props.lower : props.upper"
           :min="bound === 'max' ? (props.lower ?? minimum) : minimum"
