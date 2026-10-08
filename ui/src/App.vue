@@ -1170,7 +1170,7 @@ onBeforeUnmount(() => {
   margin-top: 4px;
 }
 .inline-modal :deep(.coordinate-input) {
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto;
 }
 .inline-modal :deep(.coordinate-input label),
 .inline-modal :deep(.coordinate-input input) {
@@ -1207,14 +1207,20 @@ onBeforeUnmount(() => {
     grid-template-columns: minmax(0, 1fr);
   }
   .inline-modal :deep(.coordinate-input) {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
   }
   .inline-modal :deep(.coordinate-input label) {
     grid-column: 1;
   }
+  .inline-modal :deep(.pick-coordinate),
+  .inline-modal :deep(.view-coordinate) {
+    grid-row: 1 / 4;
+  }
   .inline-modal :deep(.pick-coordinate) {
     grid-column: 2;
-    grid-row: 1 / 4;
+  }
+  .inline-modal :deep(.view-coordinate) {
+    grid-column: 3;
   }
 }
 

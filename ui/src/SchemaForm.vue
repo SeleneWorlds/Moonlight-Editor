@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { Locate, Radius } from '@lucide/vue';
+import { Eye, Locate, Radius } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
+import { useSelene, type Coordinate } from './selene';
 import RegistryVisual from './RegistryVisual.vue';
 import SchemaMap from './SchemaMap.vue';
 import SchemaArray from './SchemaArray.vue';
@@ -24,6 +25,8 @@ const emit = defineEmits<{
   pickCoordinate: [field: string];
   pickDistance: [pick: DistancePick];
 }>();
+
+const selene = useSelene();
 
 const parsed = computed(() => {
   try {
@@ -153,6 +156,23 @@ function coordinateValue(name: string, axis: 'x' | 'y' | 'z'): number | undefine
   return coordinate !== null && typeof coordinate === 'object' && !Array.isArray(coordinate)
     ? ((coordinate as JsonObject)[axis] as number | undefined)
     : undefined;
+}
+
+function cameraCoordinate(name: string): Coordinate | null {
+  const x = coordinateValue(name, 'x');
+  const y = coordinateValue(name, 'y');
+  const z = coordinateValue(name, 'z');
+  if (![x, y, z].every((axis) => typeof axis === 'number' && Number.isInteger(axis) && Math.abs(axis) <= 2147483647)) {
+    return null;
+  }
+  return { x: x!, y: y!, z: z! };
+}
+
+function viewCoordinate(name: string): void {
+  const coordinate = cameraCoordinate(name);
+  if (coordinate) {
+    selene.network.sendToServer('moonlight-editor:move-camera', { ...coordinate });
+  }
 }
 
 function updateCoordinate(name: string, axis: 'x' | 'y' | 'z', event: Event): void {
@@ -350,6 +370,16 @@ function closeRegistry(name: string): void {
         >
           <Locate :size="16" aria-hidden="true" />
         </button>
+        <button
+          type="button"
+          class="view-coordinate"
+          :aria-label="`Move camera to ${label(field.name)}`"
+          title="Move camera to coordinate"
+          :disabled="!cameraCoordinate(field.name)"
+          @click="viewCoordinate(field.name)"
+        >
+          <Eye :size="16" aria-hidden="true" />
+        </button>
       </div>
       <div v-else-if="field.type === 'registry' && field.registry" class="registry-input">
         <div
@@ -516,13 +546,14 @@ select:focus {
 .coordinate-input,
 .range-input {
   display: grid;
-  grid-template-columns: repeat(3, 1fr) auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto auto;
   gap: 10px;
 }
 .range-input {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.pick-coordinate {
+.pick-coordinate,
+.view-coordinate {
   display: grid;
   place-items: center;
   align-self: end;
@@ -536,9 +567,15 @@ select:focus {
   cursor: pointer;
 }
 .pick-coordinate:hover,
-.pick-coordinate:focus-visible {
+.pick-coordinate:focus-visible,
+.view-coordinate:hover:not(:disabled),
+.view-coordinate:focus-visible {
   outline: none;
   background: rgba(251, 113, 133, 0.24);
+}
+.view-coordinate:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .coordinate-input label,
 .range-input label {
