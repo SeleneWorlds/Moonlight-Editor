@@ -12,6 +12,8 @@ const menu = ref<{
 } | null>(null);
 const menuElement = ref<HTMLElement | null>(null);
 const actions = ref<Array<{ id: string; label: string }>>([]);
+const actionsLoaded = ref(false);
+const clipboardError = ref('');
 let requestId = 0;
 const releases: Array<() => void> = [];
 function close(): void {
@@ -45,6 +47,23 @@ function execute(id: string): void {
   selene.network.sendToServer('moonlight-editor:execute-context-action', { id, ...menu.value.coordinate });
   close();
 }
+async function copyCoordinates(): Promise<void> {
+  const current = menu.value;
+  if (!current) {
+    return;
+  }
+  const { x, y, z } = current.coordinate;
+  try {
+    await navigator.clipboard.writeText(`${x}, ${y}, ${z}`);
+    if (menu.value === current) {
+      close();
+    }
+  } catch {
+    if (menu.value === current) {
+      clipboardError.value = 'Could not copy coordinates to clipboard.';
+    }
+  }
+}
 onMounted(() => {
   window.addEventListener('pointerdown', dismissOutside, true);
   window.addEventListener('keydown', escape, true);
@@ -56,6 +75,8 @@ onMounted(() => {
         return;
       }
       actions.value = [];
+      actionsLoaded.value = false;
+      clipboardError.value = '';
       menu.value = {
         coordinate: { ...event.coordinate },
         x: 0,
@@ -74,10 +95,7 @@ onMounted(() => {
         (action): action is { id: string; label: string } =>
           typeof action?.id === 'string' && typeof action?.label === 'string',
       );
-      if (!actions.value.length) {
-        close();
-        return;
-      }
+      actionsLoaded.value = true;
       const current = menu.value;
       void nextTick(() => {
         const element = menuElement.value;
@@ -107,7 +125,7 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <div
-    v-if="menu && actions.length"
+    v-if="menu && actionsLoaded"
     ref="menuElement"
     class="context-menu"
     role="menu"
@@ -120,6 +138,9 @@ onBeforeUnmount(() => {
     <button v-for="action in actions" :key="action.id" type="button" role="menuitem" @click="execute(action.id)">
       {{ action.label }}
     </button>
+    <div v-if="actions.length" class="separator" role="separator" />
+    <button type="button" role="menuitem" @click="copyCoordinates">Copy Coordinates</button>
+    <p v-if="clipboardError" class="clipboard-error" role="alert">{{ clipboardError }}</p>
   </div>
 </template>
 <style scoped>
@@ -150,5 +171,14 @@ button {
 button:hover,
 button:focus-visible {
   background: #33425c;
+}
+.separator {
+  height: 1px;
+  margin: 4px 8px;
+  background: #46516a;
+}
+.clipboard-error {
+  margin: 4px 12px;
+  color: #fda4af;
 }
 </style>

@@ -254,6 +254,7 @@ const status = ref('Escape closes the file panel');
 const statusIsError = ref(false);
 const gizmos = ref<EditorGizmo[]>([]);
 const cameraCoordinate = ref(selene.world.getCameraCoordinate());
+const hoveredCoordinate = ref<Coordinate | null>(null);
 const moveCameraLevel = (direction: number, event: MouseEvent) => {
   const coordinate = { ...cameraCoordinate.value };
   const offset = event.shiftKey ? 3 : 1;
@@ -998,6 +999,7 @@ onMounted(() => {
       });
     }),
     selene.input.onPointerMove((event) => {
+      hoveredCoordinate.value = enabled.value ? { ...event.coordinate } : null;
       const pick = pickingDistance.value;
       if (enabled.value && pick && event.coordinate.z === pick.coordinate.z) {
         pick.distance = pickedDistance(pick, event.coordinate);
@@ -1089,6 +1091,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <div v-if="enabled && !visible && hoveredCoordinate" class="hovered-coordinate" aria-label="Hovered coordinates">
+    X: {{ hoveredCoordinate.x }} · Y: {{ hoveredCoordinate.y }} · Z: {{ hoveredCoordinate.z }}
+  </div>
   <ContextMenu v-if="enabled && !visible && !inlineForm && !pickingDistance && !pickingCoordinateField && !pickingRegistry" />
   <nav v-if="enabled && !visible && !pickingDistance" class="actions" aria-label="Editor actions">
     <button
@@ -1341,6 +1346,19 @@ onBeforeUnmount(() => {
   z-index: 700;
   inset: 0;
   overflow: hidden;
+  pointer-events: none;
+}
+.hovered-coordinate {
+  position: fixed;
+  z-index: 950;
+  top: 12px;
+  left: 12px;
+  padding: 6px 10px;
+  border: 1px solid rgba(212, 212, 216, 0.2);
+  border-radius: 8px;
+  color: #e4e4e7;
+  background: rgba(24, 24, 27, 0.9);
+  font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 .actions button[aria-pressed='true'] {
