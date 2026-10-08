@@ -8,6 +8,7 @@ import FileModal from './FileModal.vue';
 import SchemaForm from './SchemaForm.vue';
 import GizmoVisual from './GizmoVisual.vue';
 import GoToMenu from './GoToMenu.vue';
+import ContextMenu from './ContextMenu.vue';
 
 interface EditorGizmo {
   id: string;
@@ -1088,6 +1089,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+  <ContextMenu v-if="enabled && !visible && !inlineForm && !pickingDistance && !pickingCoordinateField && !pickingRegistry" />
   <nav v-if="enabled && !visible && !pickingDistance" class="actions" aria-label="Editor actions">
     <button
       type="button"

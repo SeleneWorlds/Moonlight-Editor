@@ -8,6 +8,8 @@ local coordinateLookups = {}
 local nextInlineId = 0
 local gizmoProviders = {}
 local goToProviders = {}
+local contextMenuActions = {}
+local contextMenuOrder = {}
 local registryVisualResolvers = {}
 local MAX_FILE_BYTES = 60 * 1024
 local RUNTIME_DATA_KEY = "moonlight-editor:state"
@@ -88,6 +90,57 @@ function Editor.registerCoordinateLookup(lookup)
     assert(type(lookup) == "function", "Coordinate lookup must be a function.")
     table.insert(coordinateLookups, lookup)
 end
+
+---Register { id, label, isAvailable?(player, coordinate), execute(player, coordinate) }.
+---Availability is checked for both coordinate queries and execution.
+function Editor.registerContextMenuAction(action)
+    assert(type(action) == "table", "Context menu action must be a table.")
+    assert(type(action.id) == "string" and action.id ~= "", "Action ID must be a non-empty string.")
+    assert(not contextMenuActions[action.id], "Context menu action ID is already registered.")
+    assert(type(action.label) == "string" and action.label ~= "", "Action label must be a non-empty string.")
+    assert(type(action.execute) == "function", "Action execute must be a function.")
+    assert(action.isAvailable == nil or type(action.isAvailable) == "function", "Action availability must be a function.")
+    contextMenuActions[action.id] = action
+    table.insert(contextMenuOrder, action.id)
+end
+
+local function contextCoordinate(player, payload)
+    if not Editor.isEnabled(player) or type(payload) ~= "table" then return end
+    for _, axis in ipairs({ "x", "y", "z" }) do
+        local value = payload[axis]
+        if type(value) ~= "number" or value % 1 ~= 0 or math.abs(value) > 2147483647 then return end
+    end
+    return position(payload.x, payload.y, payload.z)
+end
+
+Network.handlePayload("moonlight-editor:query-context-menu", function(player, payload)
+    local coordinate = contextCoordinate(player, payload)
+    if not coordinate then return end
+    local actions = {}
+    for _, id in ipairs(contextMenuOrder) do
+        local action = contextMenuActions[id]
+        local ok, available = pcall(function()
+            return not action.isAvailable or action.isAvailable(player, coordinate)
+        end)
+        if not ok then sendError(player, available)
+        elseif available then table.insert(actions, { id = id, label = action.label }) end
+    end
+    Network.sendToPlayer(player, "moonlight-editor:context-menu", {
+        requestId = payload.requestId, actions = actions,
+    })
+end)
+
+Network.handlePayload("moonlight-editor:execute-context-action", function(player, payload)
+    local coordinate = contextCoordinate(player, payload)
+    if not coordinate or type(payload.id) ~= "string" then return end
+    local action = contextMenuActions[payload.id]
+    if not action then return end
+    local ok, message = pcall(function()
+        assert(not action.isAvailable or action.isAvailable(player, coordinate), "Action is no longer available.")
+        action.execute(player, coordinate)
+    end)
+    if not ok then sendError(player, message) end
+end)
 
 function Editor.registerGizmoProvider(provider)
     assert(type(provider) == "function", "Gizmo provider must be a function.")
