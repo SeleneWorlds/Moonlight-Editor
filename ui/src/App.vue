@@ -333,10 +333,16 @@ function requestBundleRegistries(): void {
 }
 
 function selectBundle(): void {
+  selectedPath.value = null;
   selectedRegistry.value = '';
   projectFiles.value = [];
   registrySchema.value = null;
   requestBundleRegistries();
+}
+
+function selectRegistry(): void {
+  selectedPath.value = null;
+  requestProject();
 }
 
 function setProjectVisible(show: boolean): void {
@@ -1095,7 +1101,7 @@ onBeforeUnmount(() => {
     :schema="registrySchema"
     :registry-options="registryOptions"
     @select-bundle="selectBundle"
-    @request-project="requestProject"
+    @request-project="selectRegistry"
     @open-file="openFile"
     @search-registry="searchRegistry"
     @pick-coordinate="startCoordinatePicker"
