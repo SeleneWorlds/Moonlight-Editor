@@ -1305,7 +1305,8 @@ onBeforeUnmount(() => {
 }
 .gizmos {
   position: fixed;
-  z-index: 900;
+  /* Keep world gizmos below moonlight-admin's menu layer (800). */
+  z-index: 700;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
