@@ -37,15 +37,17 @@ end
 
 local function setEnabled(player, enabled)
     player:removeRuntimeData(INLINE_SESSION_KEY)
+    local state = player:getRuntimeData(RUNTIME_DATA_KEY)
+    state.enabled = enabled
     if enabled then
-        player:getRuntimeData(RUNTIME_DATA_KEY).enabled = true
-    else
-        player:removeRuntimeData(RUNTIME_DATA_KEY)
-    end
-    if enabled then
-        local controlled = player:getControlledEntity()
-        if controlled then
-            player:setCameraToCoordinate(controlled:getCoordinate())
+        if not state.coordinate then
+            local controlled = player:getControlledEntity()
+            if controlled then
+                state.coordinate = controlled:getCoordinate()
+            end
+        end
+        if state.coordinate then
+            player:setCameraToCoordinate(state.coordinate)
         end
     else
         player:setCameraToFollowControlledEntity()
@@ -216,7 +218,9 @@ Network.handlePayload("moonlight-editor:move-camera", function(player, payload)
         or math.abs(x) > 2147483647 or math.abs(y) > 2147483647 or math.abs(z) > 2147483647 then
         return
     end
-    player:setCameraToCoordinate(position(x, y, z))
+    local coordinate = position(x, y, z)
+    player:getRuntimeData(RUNTIME_DATA_KEY).coordinate = coordinate
+    player:setCameraToCoordinate(coordinate)
 end)
 
 Network.handlePayload("moonlight-editor:request-state", function(player)
