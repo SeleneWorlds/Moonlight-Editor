@@ -389,7 +389,7 @@ function searchRegistry(registry: string, query: string, lookup?: boolean): void
         />
         <textarea v-else v-model="contents" spellcheck="false" />
       </div>
-      <div v-else class="empty">Select a bundle data file, or click an NPC in the world.</div>
+      <div v-else class="empty">Select a bundle data file.</div>
       <footer class="status" :class="{ error: statusIsError }">{{ status }}</footer>
     </main>
     <dialog
