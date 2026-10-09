@@ -146,7 +146,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .context-menu {
   position: fixed;
-  z-index: 100;
+  /* Keep coordinate actions above world gizmos (700). */
+  z-index: 800;
   width: 210px;
   max-height: 230px;
   overflow-y: auto;
