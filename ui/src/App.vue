@@ -1038,7 +1038,7 @@ onMounted(() => {
       if (!enabled.value || dragging.value || !Number.isFinite(amountY) || amountY === 0) {
         return;
       }
-      cameraZoom = Math.min(1, Math.max(0.25, cameraZoom * Math.pow(1.1, -amountY)));
+      cameraZoom = Math.min(1, Math.max(0.28, cameraZoom * Math.pow(1.1, -amountY)));
       const zoom = cameraZoom;
       const revision = ++zoomRequestRevision;
       void selene.world.setCameraZoom(zoom).then((appliedZoom) => {

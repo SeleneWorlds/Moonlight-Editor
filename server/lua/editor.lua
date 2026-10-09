@@ -339,7 +339,7 @@ end)
 Network.handlePayload("moonlight-editor:zoom-camera", function(player, payload)
     if not Editor.isEnabled(player) or type(payload) ~= "table" then return end
     local zoom = payload.zoom
-    if type(zoom) ~= "number" or zoom ~= zoom or zoom < 0.25 or zoom > 1 then return end
+    if type(zoom) ~= "number" or zoom ~= zoom or zoom <= 0 or zoom == math.huge then return end
     player:setCameraZoom(zoom)
 end)
 
