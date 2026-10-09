@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Focus, Database, ArrowDown, ArrowUp, Grid2X2 } from '@lucide/vue';
+import { Focus, Database, ArrowDown, ArrowUp, Grid2X2, Eye } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import { latestRequest } from './LatestRequest';
 import { pickedDistance, projectedCircle } from './distance';
@@ -296,6 +296,7 @@ const registryQueries = new Map<string, string>();
 const status = ref('Escape closes the file panel');
 const statusIsError = ref(false);
 const gizmos = ref<EditorGizmo[]>([]);
+const showGizmos = ref(true);
 const cameraCoordinate = ref(selene.world.getCameraCoordinate());
 const hoveredCoordinate = ref<Coordinate | null>(null);
 const moveCameraLevel = (direction: number, event: MouseEvent) => {
@@ -1224,12 +1225,21 @@ onBeforeUnmount(() => {
       <Grid2X2 :size="16" aria-hidden="true" />
       Toggle Grid
     </button>
+    <button
+      type="button"
+      title="Show editor gizmos on the current z layer"
+      :aria-pressed="showGizmos"
+      @click="showGizmos = !showGizmos"
+    >
+      <Eye :size="16" aria-hidden="true" />
+      Toggle Gizmos
+    </button>
     <button type="button" @click="setProjectVisible(true)">
         <Database :size="16" aria-hidden="true" />
         Registry Editor
     </button>
   </nav>
-  <div v-if="enabled && !pickerActive" class="gizmos">
+  <div v-if="enabled && showGizmos && !pickerActive" class="gizmos">
     <button
       v-for="gizmo in projectedGizmos"
       :key="gizmo.id"
