@@ -3,6 +3,7 @@ local Json = require("selene.json")
 local Event = require("selene.event")
 local Registries = require("selene.registries")
 local Grid = require("selene.grid")
+local Permissions = require("selene.permissions")
 
 local Editor = {}
 local coordinateLookups = {}
@@ -78,6 +79,9 @@ function Editor.isEnabled(player)
 end
 
 function Editor.toggle(player)
+    if not Permissions.has(player, "moonlight-editor.toggle") then
+        return Editor.isEnabled(player)
+    end
     local enabled = not Editor.isEnabled(player)
     setEnabled(player, enabled)
     return enabled
