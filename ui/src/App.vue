@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Focus, Database, ArrowDown, ArrowUp, Grid2X2 } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
+import { latestRequest } from './LatestRequest';
 import { pickedDistance, projectedCircle } from './distance';
 import { useSelene, requestEditorOperation, type ClientNetworkPayload, type Coordinate } from './selene';
 import FileModal from './FileModal.vue';
@@ -365,6 +366,18 @@ let dragClientY = 0;
 let dragCameraPosition: { x: number; y: number } | null = null;
 let dragSequence = 0;
 let cameraZoom = 1;
+let dragRequestRevision = 0;
+let zoomRequestRevision = 0;
+const cameraRequests = latestRequest<Coordinate>((coordinate) => {
+  if (enabled.value) {
+    selene.network.sendToServer('moonlight-editor:move-camera', { ...coordinate });
+  }
+});
+const zoomRequests = latestRequest<number>((zoom) => {
+  if (enabled.value) {
+    selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom });
+  }
+});
 
 function bundleFromPath(path: string): string {
   const dataDirectory = path.search(/\/(?:common|server)\/data\//);
@@ -802,6 +815,9 @@ onMounted(() => {
         gizmos.value = [];
       }
       if (!enabled.value) {
+        cameraRequests.cancel();
+        zoomRequests.cancel();
+        zoomRequestRevision += 1;
         if (cameraZoom !== 1) {
           cameraZoom = 1;
           void selene.world.setCameraZoom(1);
@@ -1024,8 +1040,12 @@ onMounted(() => {
       }
       cameraZoom = Math.min(1, Math.max(0.25, cameraZoom * Math.pow(1.1, -amountY)));
       const zoom = cameraZoom;
+      const revision = ++zoomRequestRevision;
       void selene.world.setCameraZoom(zoom).then((appliedZoom) => {
-        selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom: appliedZoom });
+        if (!enabled.value || revision !== zoomRequestRevision) {
+          return;
+        }
+        zoomRequests.push(appliedZoom);
         projectionRevision.value += 1;
       });
     }),
@@ -1033,6 +1053,7 @@ onMounted(() => {
       if (!enabled.value || event.button !== 0 || suppressWorldPointer) {
         return;
       }
+      cameraRequests.cancel();
       dragging.value = true;
       moved = false;
       lastRequested = selene.world.getCameraCoordinate();
@@ -1057,6 +1078,8 @@ onMounted(() => {
       }
       moved ||= Math.hypot(event.clientX - dragClientX, event.clientY - dragClientY) > 4;
       if (dragCameraPosition && moved) {
+        const sequence = dragSequence;
+        const revision = ++dragRequestRevision;
         void selene.world
           .setCameraPosition({
             x: dragCameraPosition.x - (event.clientX - dragClientX) / cameraZoom,
@@ -1066,6 +1089,8 @@ onMounted(() => {
             projectionRevision.value += 1;
             if (
               !dragging.value ||
+              sequence !== dragSequence ||
+              revision !== dragRequestRevision ||
               (lastRequested &&
                 coordinate.x === lastRequested.x &&
                 coordinate.y === lastRequested.y &&
@@ -1074,7 +1099,7 @@ onMounted(() => {
               return;
             }
             lastRequested = coordinate;
-            selene.network.sendToServer('moonlight-editor:move-camera', { ...coordinate });
+            cameraRequests.push({ ...coordinate });
           });
       }
     }),
@@ -1092,10 +1117,27 @@ onMounted(() => {
           selene.network.sendToServer('moonlight-editor:lookup-coordinate', { ...event.coordinate });
         }
       }
+      // Apply the release position even if the last pointer-move promise is still pending.
+      const origin = dragCameraPosition;
+      const sequence = ++dragSequence;
+      cameraRequests.cancel();
+      if (origin && moved && enabled.value) {
+        void selene.world
+          .setCameraPosition({
+            x: origin.x - (event.clientX - dragClientX) / cameraZoom,
+            y: origin.y - (event.clientY - dragClientY) / cameraZoom,
+          })
+          .then((coordinate) => {
+            if (!enabled.value || sequence !== dragSequence) {
+              return;
+            }
+            cameraRequests.push({ ...coordinate });
+            cameraRequests.flush();
+          });
+      }
       dragging.value = false;
       lastRequested = null;
       dragCameraPosition = null;
-      dragSequence += 1;
     }),
     selene.world.onCameraCoordinateChanged((coordinate) => {
       const changedLayer = coordinate.z !== cameraCoordinate.value.z;
@@ -1122,6 +1164,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  cameraRequests.cancel();
+  zoomRequests.cancel();
+  dragSequence += 1;
+  zoomRequestRevision += 1;
   tileGridCheckRevision += 1;
   void selene.world.setTileGridVisible(false);
   if (cameraZoom !== 1) {
