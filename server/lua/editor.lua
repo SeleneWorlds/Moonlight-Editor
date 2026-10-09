@@ -2,6 +2,7 @@ local Network = require("selene.network")
 local Json = require("selene.json")
 local Event = require("selene.event")
 local Registries = require("selene.registries")
+local Grid = require("selene.grid")
 
 local Editor = {}
 local coordinateLookups = {}
@@ -372,6 +373,19 @@ Network.handlePayload("moonlight-editor:focus-character", function(player)
     if not controlled then return end
     local coordinate = controlled:getCoordinate()
     focusCamera(player, coordinate)
+end)
+
+Network.handlePayload("moonlight-editor:request-directions", function(player)
+    if not Editor.isEnabled(player) then return end
+    local directions = {}
+    for _, direction in ipairs(Grid.getDirections()) do
+        local vector = direction:getVector()
+        table.insert(directions, {
+            name = direction:getName(), angle = direction:getAngle(),
+            vector = { x = vector.x, y = vector.y, z = vector.z },
+        })
+    end
+    Network.sendToPlayer(player, "moonlight-editor:directions", { directions = directions })
 end)
 
 Network.handlePayload("moonlight-editor:request-state", function(player)

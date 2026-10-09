@@ -9,6 +9,7 @@ import SchemaArray from './SchemaArray.vue';
 import JsonInput from './JsonInput.vue';
 import ScriptInput from './ScriptInput.vue';
 import RangeInput from './RangeInput.vue';
+import DirectionInput from './DirectionInput.vue';
 
 type JsonObject = Record<string, unknown>;
 type RegistryOption = { value: string; label: string; visual?: string };
@@ -316,9 +317,15 @@ function closeRegistry(name: string): void {
           <Radius :size="16" aria-hidden="true" />
         </button>
       </div>
+      <DirectionInput
+        v-else-if="field.type === 'Direction'"
+        :value="parsed[field.name] as string | undefined"
+        :readonly="readonly"
+        @select="update(field.name, $event)"
+      />
       <input
         :readonly="readonly"
-        v-else-if="field.type === 'integer' || field.type === 'number' || field.type === 'Direction'"
+        v-else-if="field.type === 'integer' || field.type === 'number'"
         :value="parsed[field.name] as number | undefined"
         type="number"
         :step="field.type === 'number' ? 'any' : 1"

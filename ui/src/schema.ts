@@ -28,7 +28,6 @@ export function defaultSchemaValue(definition: SchemaDefinition): unknown {
   switch (type) {
     case 'integer':
     case 'number':
-    case 'Direction':
       return 0;
     case 'distance':
       return typeof definition === 'string' ? 0 : (definition.min ?? 0);
