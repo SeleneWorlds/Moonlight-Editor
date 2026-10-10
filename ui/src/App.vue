@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { Focus, Database, ArrowDown, ArrowUp, Grid2X2, Eye } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import { latestRequest } from './LatestRequest';
+import { parseRegistryOptions } from './registryOptions';
 import { pickedDistance, projectedCircle } from './distance';
 import { useSelene, requestEditorOperation, type ClientNetworkPayload, type Coordinate } from './selene';
 import FileModal from './FileModal.vue';
@@ -931,15 +932,7 @@ onMounted(() => {
         ...registryOptions.value,
         [payload.registry]: [
           ...(payload.lookup === true ? (registryOptions.value[payload.registry] ?? []) : []),
-          ...payload.options.filter(
-            (option): option is { value: string; label: string; visual?: string } =>
-              typeof option === 'object' &&
-              option !== null &&
-              typeof (option as Record<string, unknown>).value === 'string' &&
-              typeof (option as Record<string, unknown>).label === 'string' &&
-              (typeof (option as Record<string, unknown>).visual === 'string' ||
-                (option as Record<string, unknown>).visual === undefined),
-          ),
+          ...parseRegistryOptions(payload.registry, payload.options),
         ].filter(
           (option, index, options) => options.findIndex((candidate) => candidate.value === option.value) === index,
         ),
