@@ -125,9 +125,21 @@ function cancelResize(): void {
   redraw();
 }
 function selectShape(group: 'include' | 'exclude', index: number): void {
+  const target = draft.value[group][index];
+  if (!target) {
+    return;
+  }
+  cancelResize();
+  cancelMove();
   selected.value = { group, index };
   cursorMode.value = true;
-  redraw();
+  if (target.z !== z.value) {
+    z.value = target.z;
+    floorText.value = String(target.z);
+    void load();
+  } else {
+    redraw();
+  }
 }
 const summary = computed(() => {
   try {
@@ -151,7 +163,7 @@ async function open(): Promise<void> {
   selected.value = undefined;
   floors.value = [];
   cursorMode.value = true;
-  z.value = selene.world.getCameraCoordinate().z;
+  z.value = (draft.value.include[0] ?? draft.value.exclude[0])?.z ?? selene.world.getCameraCoordinate().z;
   floorText.value = String(z.value);
   release = selene.input.captureText();
   dialog.value?.showModal();
@@ -634,7 +646,7 @@ function apply(): void {
         </aside>
       </div>
       <footer>
-      <span></span>
+        <span></span>
         <button class="secondary" type="button" @click="dialog?.close()">Cancel</button
         ><button type="button" :disabled="readonly" @click="apply">Apply area</button>
       </footer>
