@@ -39,6 +39,8 @@ export function defaultSchemaValue(definition: SchemaDefinition): unknown {
         min: typeof definition === 'string' ? 0 : (definition.min ?? Math.min(0, definition.max ?? 0)),
         max: typeof definition === 'string' ? 0 : (definition.min ?? Math.min(0, definition.max ?? 0)),
       };
+    case 'area':
+      return { include: [], exclude: [] };
     case 'coordinate':
       return { x: 0, y: 0, z: 0 };
     case 'object':

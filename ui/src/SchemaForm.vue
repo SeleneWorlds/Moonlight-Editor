@@ -9,6 +9,7 @@ import SchemaArray from './SchemaArray.vue';
 import JsonInput from './JsonInput.vue';
 import ScriptInput from './ScriptInput.vue';
 import RangeInput from './RangeInput.vue';
+import AreaInput from './AreaInput.vue';
 import DirectionInput from './DirectionInput.vue';
 
 type JsonObject = Record<string, unknown>;
@@ -240,7 +241,7 @@ function closeRegistry(name: string): void {
 <template>
   <div v-if="parsed" class="schema-form">
     <component
-      :is="['object', 'map', 'array'].includes(field.type) ? 'details' : 'label'"
+      :is="['object', 'map', 'array'].includes(field.type) ? 'details' : field.type === 'area' ? 'div' : 'label'"
       v-for="field in fields"
       :key="field.name"
       class="field"
@@ -253,8 +254,14 @@ function closeRegistry(name: string): void {
           Clear
         </button>
       </component>
+      <AreaInput
+        v-if="field.type === 'area'"
+        :value="parsed[field.name]"
+        :readonly="readonly"
+        @update-value="update(field.name, $event)"
+      />
       <SchemaMap
-        v-if="field.type === 'map' && field.keyType && field.valueType"
+        v-else-if="field.type === 'map' && field.keyType && field.valueType"
         :key-type="field.keyType"
         :value-type="field.valueType"
         :contents="objectContents(field.name)"
