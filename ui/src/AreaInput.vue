@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
-import { MousePointer, Square, Circle, Plus, Minus, ChevronUp, ChevronDown } from '@lucide/vue';
+import { MousePointer, Square, Circle, Plus, Minus, ChevronUp, ChevronDown, Eye } from '@lucide/vue';
 import { useSelene } from './selene';
 import { containsShape, parseArea, resizeShape, type ResizeHandle, type Area, type AreaShape } from './area';
 const props = defineProps<{ value: unknown; readonly?: boolean }>();
@@ -149,6 +149,28 @@ const summary = computed(() => {
     return 'Invalid area';
   }
 });
+const viewCoordinate = computed(() => {
+  try {
+    const area = parseArea(props.value);
+    const first = area.include[0] ?? area.exclude[0];
+    if (!first) return null;
+    const coordinate = {
+      x: first.type === 'rectangle' ? first.x + Math.floor((first.width - 1) / 2) : first.x,
+      y: first.type === 'rectangle' ? first.y + Math.floor((first.height - 1) / 2) : first.y,
+      z: first.z,
+    };
+    return Object.values(coordinate).every((axis) => Number.isInteger(axis) && Math.abs(axis) <= 2147483647)
+      ? coordinate
+      : null;
+  } catch {
+    return null;
+  }
+});
+function view(): void {
+  if (viewCoordinate.value) {
+    selene.network.sendToServer('moonlight-editor:move-camera', { ...viewCoordinate.value });
+  }
+}
 async function open(): Promise<void> {
   if (dialog.value?.open) {
     return;
@@ -480,7 +502,19 @@ function apply(): void {
 </script>
 <template>
   <div class="area-input">
-    <button class="picker-trigger" type="button" @click="open">Area Picker · {{ summary }}</button>
+    <div class="area-controls">
+      <button class="picker-trigger" type="button" @click="open">Area Picker · {{ summary }}</button>
+      <button
+        class="view-coordinate"
+        type="button"
+        aria-label="Move camera to area"
+        title="Move camera to area"
+        :disabled="!viewCoordinate"
+        @click="view"
+      >
+        <Eye :size="16" aria-hidden="true" />
+      </button>
+    </div>
     <span v-if="error && !dialog?.open" role="alert">{{ error }}</span>
     <dialog
       ref="dialog"
@@ -656,6 +690,33 @@ function apply(): void {
 <style scoped>
 .area-input {
   min-width: 0;
+}
+.area-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.view-coordinate {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(251, 113, 133, 0.42);
+  border-radius: 6px;
+  color: #ffe4e6;
+  background: rgba(251, 113, 133, 0.14);
+  cursor: pointer;
+}
+.view-coordinate:hover:not(:disabled),
+.view-coordinate:focus-visible {
+  outline: none;
+  background: rgba(251, 113, 133, 0.24);
+}
+.view-coordinate:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .area-picker {
   width: min(1200px, calc(100vw - 48px));
