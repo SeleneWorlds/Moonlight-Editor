@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { Focus, Database, ArrowDown, ArrowUp, Grid2X2, Eye } from '@lucide/vue';
+import { Focus, Database, ArrowDown, ArrowUp, Grid2X2, Eye, Lightbulb } from '@lucide/vue';
 import type { DistancePick, SchemaDefinition } from './schema';
 import { latestRequest } from './LatestRequest';
 import { parseRegistryOptions } from './registryOptions';
@@ -310,6 +310,12 @@ const moveCameraLevel = (direction: number, event: MouseEvent) => {
 };
 const projectionRevision = ref(0);
 const showTileGrid = ref(false);
+const showLights = ref(selene.world.isLightingEnabled());
+async function toggleLights(): Promise<void> {
+  const enabled = !selene.world.isLightingEnabled();
+  await selene.world.setLightingEnabled(enabled);
+  showLights.value = enabled;
+}
 let tileGridCheckRevision = 0;
 function toggleTileGrid(): void {
   tileGridCheckRevision += 1;
@@ -1217,6 +1223,15 @@ onBeforeUnmount(() => {
     >
       <Grid2X2 :size="16" aria-hidden="true" />
       Toggle Grid
+    </button>
+    <button
+      type="button"
+      title="Enable or disable scene lighting"
+      :aria-pressed="showLights"
+      @click="toggleLights"
+    >
+      <Lightbulb :size="16" aria-hidden="true" />
+      Toggle Lights
     </button>
     <button
       type="button"
