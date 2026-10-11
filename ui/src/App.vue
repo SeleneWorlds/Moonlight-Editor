@@ -1459,7 +1459,7 @@ onBeforeUnmount(() => {
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
-.actions button[aria-pressed='true'] {
+.actions button[aria-pressed='false'] {
   background: #3f3f46;
   border-color: #f29d49;
 }
