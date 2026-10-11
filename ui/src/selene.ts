@@ -45,6 +45,8 @@ export interface SeleneUiApi {
   readonly world: {
     getCameraCoordinate(): Coordinate;
     hasTileAt(coordinate: Coordinate): Promise<boolean>;
+    setLightingEnabled(enabled: boolean): Promise<void>;
+    isLightingEnabled(): boolean;
     setTileGridVisible(visible: boolean): Promise<void>;
     setCameraZoom(zoom: number): Promise<number>;
     getCameraPosition(): Promise<{ x: number; y: number }>;
@@ -167,6 +169,8 @@ export const createMockSeleneUiApi = (): SeleneUiApi => ({
   world: {
     getCameraCoordinate: () => ({ x: 0, y: 0, z: 0 }),
     hasTileAt: async () => false,
+    setLightingEnabled: async () => undefined,
+    isLightingEnabled: () => true,
     setTileGridVisible: async () => undefined,
     setCameraZoom: async (zoom) => zoom,
     getCameraPosition: async () => ({ x: 0, y: 0 }),
