@@ -692,8 +692,11 @@ select:focus {
   position: absolute;
   z-index: 20;
   top: calc(100% + 4px);
-  right: 0;
   left: 0;
+  box-sizing: border-box;
+  width: max-content;
+  min-width: min(100%, 560px, calc(100vw - 32px));
+  max-width: min(560px, calc(100vw - 32px));
   max-height: 270px;
   overflow: auto;
   padding: 4px;
@@ -720,6 +723,7 @@ select:focus {
   background: rgba(251, 113, 133, 0.14);
 }
 .option-text {
+  flex: 1;
   min-width: 0;
   display: grid;
 }
