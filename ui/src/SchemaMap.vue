@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
+import { ExternalLink } from '@lucide/vue';
 import { defaultSchemaValue, type DistancePick, type SchemaDefinition } from './schema';
+import { useSelene } from './selene';
 import SchemaForm from './SchemaForm.vue';
 import RegistryVisual from './RegistryVisual.vue';
 
@@ -20,6 +22,7 @@ const emit = defineEmits<{
   pickDistance: [pick: DistancePick];
 }>();
 const entries = computed<Record<string, unknown>>(() => JSON.parse(props.contents));
+const selene = useSelene();
 const keyRegistry = computed(() =>
   typeof props.keyType !== 'string' && props.keyType.type === 'registry' ? props.keyType.registry : undefined,
 );
@@ -54,6 +57,12 @@ watch(
 
 function entryOption(key: string): RegistryOption | undefined {
   return keyRegistry.value ? knownRegistryOptions[keyRegistry.value]?.[key] : undefined;
+}
+
+function openRegistryEntry(key: string): void {
+  if (keyRegistry.value && key) {
+    selene.network.sendToServer('moonlight-editor:open-registry-entry', { registry: keyRegistry.value, value: key });
+  }
 }
 const inlineProperties = computed(() => {
   const definition = props.valueType;
@@ -161,6 +170,17 @@ function valueLabel(value: unknown): string {
         <span class="entry-key" :title="key">
           <RegistryVisual v-if="entryOption(key)?.visual" :identifier="entryOption(key)!.visual!" />
           <span>{{ entryLabel(key) }}</span>
+          <button
+            v-if="keyRegistry"
+            type="button"
+            class="open-registry-entry"
+            :disabled="!key"
+            :aria-label="`Open ${entryLabel(key)} registry entry in the form`"
+            title="Open registry entry in the form"
+            @click="openRegistryEntry(key)"
+          >
+            <ExternalLink :size="16" aria-hidden="true" />
+          </button>
         </span>
         <button :disabled="readonly" type="button" :aria-label="`Remove ${key}`" @click="remove(key)">Remove</button>
       </div>
@@ -252,6 +272,21 @@ button {
 button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+.open-registry-entry {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(251, 113, 133, 0.42);
+  color: #ffe4e6;
+  background: rgba(251, 113, 133, 0.14);
+}
+.open-registry-entry:hover:not(:disabled),
+.open-registry-entry:focus-visible {
+  background: rgba(251, 113, 133, 0.24);
 }
 small {
   color: #fda4af;
