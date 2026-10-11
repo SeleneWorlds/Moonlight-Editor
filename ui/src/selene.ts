@@ -43,6 +43,7 @@ export interface SeleneUiApi {
     onConnected(callback: () => void): () => void;
   };
   readonly world: {
+    setTileOcclusionEnabled?(enabled: boolean): void;
     getCameraCoordinate(): Coordinate;
     hasTileAt(coordinate: Coordinate): Promise<boolean>;
     setLightingEnabled(enabled: boolean): Promise<void>;

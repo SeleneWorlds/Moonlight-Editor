@@ -311,10 +311,16 @@ const moveCameraLevel = (direction: number, event: MouseEvent) => {
 const projectionRevision = ref(0);
 const showTileGrid = ref(false);
 const showLights = ref(selene.world.isLightingEnabled());
-async function toggleLights(): Promise<void> {
-  const enabled = !selene.world.isLightingEnabled();
-  await selene.world.setLightingEnabled(enabled);
-  showLights.value = enabled;
+async function syncEditorLighting() {
+  const lighting = showLights.value && (!enabled.value || cameraZoom > 0.5);
+  if (selene.world.isLightingEnabled() !== lighting) {
+    await selene.world.setLightingEnabled(lighting);
+  }
+}
+
+async function toggleLights() {
+  showLights.value = !showLights.value;
+  await syncEditorLighting();
 }
 let tileGridCheckRevision = 0;
 function toggleTileGrid(): void {
@@ -373,6 +379,7 @@ let dragClientX = 0;
 let dragClientY = 0;
 let dragCameraPosition: { x: number; y: number } | null = null;
 let dragSequence = 0;
+const MIN_CAMERA_ZOOM = 0.28;
 let cameraZoom = 1;
 let dragRequestRevision = 0;
 let zoomRequestRevision = 0;
@@ -816,6 +823,8 @@ onMounted(() => {
       }
       tileGridCheckRevision += 1;
       enabled.value = payload.enabled === true;
+      selene.world.setTileOcclusionEnabled?.(!enabled.value);
+      void syncEditorLighting();
       if (enabled.value) {
         selene.network.sendToServer('moonlight-editor:zoom-camera', { zoom: cameraZoom });
         requestGizmos();
@@ -1038,13 +1047,15 @@ onMounted(() => {
       if (!enabled.value || dragging.value || !Number.isFinite(amountY) || amountY === 0) {
         return;
       }
-      cameraZoom = Math.min(1, Math.max(0.28, cameraZoom * Math.pow(1.1, -amountY)));
+      cameraZoom = Math.min(1, Math.max(MIN_CAMERA_ZOOM, cameraZoom * Math.pow(1.1, -amountY)));
       const zoom = cameraZoom;
       const revision = ++zoomRequestRevision;
       void selene.world.setCameraZoom(zoom).then((appliedZoom) => {
         if (!enabled.value || revision !== zoomRequestRevision) {
           return;
         }
+        cameraZoom = appliedZoom;
+        void syncEditorLighting();
         zoomRequests.push(appliedZoom);
         projectionRevision.value += 1;
       });
@@ -1164,6 +1175,10 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  selene.world.setTileOcclusionEnabled?.(true);
+  if (selene.world.isLightingEnabled() !== showLights.value) {
+    void selene.world.setLightingEnabled(showLights.value);
+  }
   cameraRequests.cancel();
   zoomRequests.cancel();
   dragSequence += 1;
@@ -1596,3 +1611,5 @@ onBeforeUnmount(() => {
   display: block;
 }
 </style>
+
+
